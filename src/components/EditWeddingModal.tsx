@@ -27,6 +27,8 @@ import {
   Lock,
   Loader2,
   AlertCircle,
+  Camera,
+  Users,
 } from 'lucide-react';
 import { WeddingData, GalleryItem, WeddingEvent } from '../types';
 import { POPULAR_BANKS, INITIAL_WEDDING_DATA } from '../data/defaultWeddingData';
@@ -502,32 +504,34 @@ export const EditWeddingModal: React.FC<EditWeddingModalProps> = ({
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-[11px] font-semibold text-stone-700 mb-1">
-                    Ảnh chân dung Chú rể
-                  </label>
-                  <div className="flex items-center gap-3">
-                    <img
-                      src={formData.groom.avatar}
-                      alt="Groom avatar"
-                      className="w-14 h-14 rounded-full object-cover border-2 border-[#a06a3e]/40 shadow-sm shrink-0"
-                    />
-                    <div className="flex-1 flex flex-col sm:flex-row gap-2">
-                      <input
-                        type="text"
-                        placeholder="Dán link ảnh online (URL)..."
-                        value={formData.groom.avatar}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            groom: { ...formData.groom, avatar: e.target.value },
-                          })
-                        }
-                        className="flex-1 px-3 py-1.5 rounded-xl bg-white border border-stone-300 text-xs focus:outline-none"
+                {/* Groom Avatar Card */}
+                <div className="p-3.5 sm:p-4 rounded-2xl bg-white border border-[#ebdccb] shadow-xs space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-stone-800 flex items-center gap-1.5">
+                      <Camera className="w-3.5 h-3.5 text-[#9b663b]" />
+                      <span>Ảnh Chân Dung Chú Rể (Bảo Trung)</span>
+                    </label>
+                    {formData.groom.avatar?.includes('images.unsplash.com') ? (
+                      <span className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full font-medium">
+                        Ảnh mẫu demo (Chưa thay)
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full font-medium">
+                        ✓ Ảnh của bạn
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4">
+                    <div className="relative group shrink-0">
+                      <img
+                        src={formData.groom.avatar}
+                        alt="Groom avatar"
+                        className="w-20 h-20 rounded-full object-cover border-3 border-[#a06a3e]/30 shadow-md"
                       />
-                      <label className="cursor-pointer inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#a06a3e] hover:bg-[#88572f] text-white text-xs font-semibold shadow-xs shrink-0 transition-colors">
-                        <Upload className="w-3.5 h-3.5" />
-                        <span>Tải ảnh chú rể</span>
+                      <label className="cursor-pointer absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-[10px] font-medium">
+                        <Upload className="w-4 h-4 mb-0.5" />
+                        <span>Đổi ảnh</span>
                         <input
                           type="file"
                           accept="image/*"
@@ -545,6 +549,46 @@ export const EditWeddingModal: React.FC<EditWeddingModalProps> = ({
                           }
                         />
                       </label>
+                    </div>
+
+                    <div className="flex-1 space-y-2 w-full">
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <label className="cursor-pointer inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-[#a06a3e] hover:bg-[#88572f] text-white text-xs font-semibold shadow-xs shrink-0 transition-colors">
+                          <Upload className="w-3.5 h-3.5" />
+                          <span>Tải ảnh từ máy / điện thoại</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) =>
+                              handleFileUpload(
+                                e,
+                                (url) =>
+                                  setFormData({
+                                    ...formData,
+                                    groom: { ...formData.groom, avatar: url },
+                                  }),
+                                600
+                              )
+                            }
+                          />
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Hoặc dán link ảnh online (https://...)"
+                          value={formData.groom.avatar}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              groom: { ...formData.groom, avatar: e.target.value },
+                            })
+                          }
+                          className="flex-1 px-3 py-2 rounded-xl bg-stone-50 border border-stone-200 text-xs focus:bg-white focus:outline-none"
+                        />
+                      </div>
+                      <p className="text-[11px] text-stone-500">
+                        Hỗ trợ ảnh chụp điện thoại (JPG, PNG). Ảnh tự động tối ưu tỉ lệ tròn sắc nét và đồng bộ lên đám mây.
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -626,32 +670,34 @@ export const EditWeddingModal: React.FC<EditWeddingModalProps> = ({
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-[11px] font-semibold text-stone-700 mb-1">
-                    Ảnh chân dung Cô dâu
-                  </label>
-                  <div className="flex items-center gap-3">
-                    <img
-                      src={formData.bride.avatar}
-                      alt="Bride avatar"
-                      className="w-14 h-14 rounded-full object-cover border-2 border-rose-300 shadow-sm shrink-0"
-                    />
-                    <div className="flex-1 flex flex-col sm:flex-row gap-2">
-                      <input
-                        type="text"
-                        placeholder="Dán link ảnh online (URL)..."
-                        value={formData.bride.avatar}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            bride: { ...formData.bride, avatar: e.target.value },
-                          })
-                        }
-                        className="flex-1 px-3 py-1.5 rounded-xl bg-white border border-stone-300 text-xs focus:outline-none"
+                {/* Bride Avatar Card */}
+                <div className="p-3.5 sm:p-4 rounded-2xl bg-white border border-rose-100 shadow-xs space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-stone-800 flex items-center gap-1.5">
+                      <Camera className="w-3.5 h-3.5 text-rose-600" />
+                      <span>Ảnh Chân Dung Cô Dâu (Lê Quỳnh)</span>
+                    </label>
+                    {formData.bride.avatar?.includes('images.unsplash.com') ? (
+                      <span className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full font-medium">
+                        Ảnh mẫu demo (Chưa thay)
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full font-medium">
+                        ✓ Ảnh của bạn
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4">
+                    <div className="relative group shrink-0">
+                      <img
+                        src={formData.bride.avatar}
+                        alt="Bride avatar"
+                        className="w-20 h-20 rounded-full object-cover border-3 border-rose-300 shadow-md"
                       />
-                      <label className="cursor-pointer inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold shadow-xs shrink-0 transition-colors">
-                        <Upload className="w-3.5 h-3.5" />
-                        <span>Tải ảnh cô dâu</span>
+                      <label className="cursor-pointer absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-[10px] font-medium">
+                        <Upload className="w-4 h-4 mb-0.5" />
+                        <span>Đổi ảnh</span>
                         <input
                           type="file"
                           accept="image/*"
@@ -669,6 +715,46 @@ export const EditWeddingModal: React.FC<EditWeddingModalProps> = ({
                           }
                         />
                       </label>
+                    </div>
+
+                    <div className="flex-1 space-y-2 w-full">
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <label className="cursor-pointer inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold shadow-xs shrink-0 transition-colors">
+                          <Upload className="w-3.5 h-3.5" />
+                          <span>Tải ảnh từ máy / điện thoại</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) =>
+                              handleFileUpload(
+                                e,
+                                (url) =>
+                                  setFormData({
+                                    ...formData,
+                                    bride: { ...formData.bride, avatar: url },
+                                  }),
+                                600
+                              )
+                            }
+                          />
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Hoặc dán link ảnh online (https://...)"
+                          value={formData.bride.avatar}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              bride: { ...formData.bride, avatar: e.target.value },
+                            })
+                          }
+                          className="flex-1 px-3 py-2 rounded-xl bg-stone-50 border border-stone-200 text-xs focus:bg-white focus:outline-none"
+                        />
+                      </div>
+                      <p className="text-[11px] text-stone-500">
+                        Hỗ trợ ảnh chụp điện thoại (JPG, PNG). Ảnh tự động tối ưu tỉ lệ tròn sắc nét và đồng bộ lên đám mây.
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -1939,13 +2025,143 @@ export const EditWeddingModal: React.FC<EditWeddingModalProps> = ({
           {/* TAB: PHOTOS & MUSIC */}
           {activeTab === 'photos' && (
             <div className="space-y-5">
+              {/* Bride & Groom Avatars Section */}
+              <div className="p-4 sm:p-5 rounded-2xl bg-white border border-[#ebdccb] shadow-xs space-y-4">
+                <div className="flex items-center justify-between pb-2 border-b border-stone-100">
+                  <div className="flex items-center gap-2">
+                    <Users className="w-4 h-4 text-[#9b663b]" />
+                    <h4 className="font-semibold text-stone-800 text-xs sm:text-sm uppercase tracking-wider">
+                      Ảnh Chân Dung Cô Dâu & Chú Rể
+                    </h4>
+                  </div>
+                  <span className="text-[11px] text-stone-500">Hiển thị ở phần giới thiệu Chú Rể & Cô Dâu</span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Groom Avatar */}
+                  <div className="p-3.5 rounded-xl bg-[#faf6f0] border border-[#eee2d3] space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-stone-800">Chú Rể ({formData.groom.name})</span>
+                      {formData.groom.avatar?.includes('images.unsplash.com') ? (
+                        <span className="text-[10px] text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full font-medium">Ảnh mẫu</span>
+                      ) : (
+                        <span className="text-[10px] text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full font-medium">✓ Ảnh của bạn</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={formData.groom.avatar}
+                        alt="Groom avatar"
+                        className="w-16 h-16 rounded-full object-cover border-2 border-[#a06a3e]/40 shadow-sm shrink-0"
+                      />
+                      <div className="flex-1 space-y-1.5 min-w-0">
+                        <label className="cursor-pointer w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#a06a3e] hover:bg-[#88572f] text-white text-xs font-semibold shadow-xs transition-colors">
+                          <Upload className="w-3.5 h-3.5" />
+                          <span>Tải ảnh chú rể</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) =>
+                              handleFileUpload(
+                                e,
+                                (url) => setFormData({ ...formData, groom: { ...formData.groom, avatar: url } }),
+                                600
+                              )
+                            }
+                          />
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Hoặc dán link ảnh online..."
+                          value={formData.groom.avatar}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              groom: { ...formData.groom, avatar: e.target.value },
+                            })
+                          }
+                          className="w-full px-2.5 py-1 rounded-lg bg-white border border-stone-300 text-[11px] focus:outline-none"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Bride Avatar */}
+                  <div className="p-3.5 rounded-xl bg-rose-50/50 border border-rose-100 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-stone-800">Cô Dâu ({formData.bride.name})</span>
+                      {formData.bride.avatar?.includes('images.unsplash.com') ? (
+                        <span className="text-[10px] text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full font-medium">Ảnh mẫu</span>
+                      ) : (
+                        <span className="text-[10px] text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full font-medium">✓ Ảnh của bạn</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={formData.bride.avatar}
+                        alt="Bride avatar"
+                        className="w-16 h-16 rounded-full object-cover border-2 border-rose-300 shadow-sm shrink-0"
+                      />
+                      <div className="flex-1 space-y-1.5 min-w-0">
+                        <label className="cursor-pointer w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold shadow-xs transition-colors">
+                          <Upload className="w-3.5 h-3.5" />
+                          <span>Tải ảnh cô dâu</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) =>
+                              handleFileUpload(
+                                e,
+                                (url) => setFormData({ ...formData, bride: { ...formData.bride, avatar: url } }),
+                                600
+                              )
+                            }
+                          />
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Hoặc dán link ảnh online..."
+                          value={formData.bride.avatar}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              bride: { ...formData.bride, avatar: e.target.value },
+                            })
+                          }
+                          className="w-full px-2.5 py-1 rounded-lg bg-white border border-stone-300 text-[11px] focus:outline-none"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {/* Main Cover Image */}
               <div className="p-4 rounded-2xl bg-[#faf6f0] border border-[#eee2d3] space-y-3">
-                <div className="flex items-center justify-between">
-                  <label className="block text-xs font-semibold text-stone-800">
-                    Ảnh Bìa Chính (Hero Banner Background)
-                  </label>
-                  <span className="text-[10px] text-stone-500">Hiển thị toàn màn hình phần mở đầu thiệp</span>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <label className="block text-xs font-semibold text-stone-800">
+                      Ảnh Bìa Chính (Hero Banner Background)
+                    </label>
+                    <span className="text-[10px] text-stone-500">Hiển thị toàn màn hình phần mở đầu thiệp</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setFormData({
+                        ...formData,
+                        coverImage: INITIAL_WEDDING_DATA.coverImage,
+                        secondaryCoverImage: INITIAL_WEDDING_DATA.secondaryCoverImage,
+                      })
+                    }
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white hover:bg-stone-50 border border-stone-200 text-stone-700 text-[11px] font-medium shadow-2xs transition-all self-start sm:self-auto"
+                    title="Khôi phục lại ảnh nền ban đầu trong phiên bản gốc"
+                  >
+                    <RotateCcw className="w-3 h-3 text-stone-500" />
+                    <span>Dùng ảnh nền phiên bản cũ</span>
+                  </button>
                 </div>
                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
                   <img
@@ -1969,8 +2185,9 @@ export const EditWeddingModal: React.FC<EditWeddingModalProps> = ({
                         accept="image/*"
                         className="hidden"
                         onChange={(e) =>
-                          handleFileUpload(e, (url) =>
-                            setFormData({ ...formData, coverImage: url }),
+                          handleFileUpload(
+                            e,
+                            (url) => setFormData({ ...formData, coverImage: url }),
                             1200
                           )
                         }

@@ -15,6 +15,7 @@ import {
 } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 import { WeddingData, GuestRSVP, WeddingWish, GalleryItem } from '../types';
+import { INITIAL_WEDDING_DATA } from '../data/defaultWeddingData';
 
 // Initialize Firebase SDK
 export const app = initializeApp(firebaseConfig);
@@ -106,12 +107,35 @@ export function subscribeToWeddingData(
   const emitMergedData = () => {
     if (!cachedMainData) return;
     const finalData: WeddingData = {
+      ...INITIAL_WEDDING_DATA,
       ...cachedMainData,
+      groom: {
+        ...INITIAL_WEDDING_DATA.groom,
+        ...(cachedMainData.groom || {}),
+      },
+      bride: {
+        ...INITIAL_WEDDING_DATA.bride,
+        ...(cachedMainData.bride || {}),
+      },
+      bankAccounts: {
+        ...INITIAL_WEDDING_DATA.bankAccounts,
+        ...(cachedMainData.bankAccounts || {}),
+      },
+      events:
+        cachedMainData.events && cachedMainData.events.length > 0
+          ? cachedMainData.events
+          : INITIAL_WEDDING_DATA.events,
+      story:
+        cachedMainData.story && cachedMainData.story.length > 0
+          ? cachedMainData.story
+          : INITIAL_WEDDING_DATA.story,
       // If we have custom gallery items in wedding_gallery collection, use them
       gallery:
         cachedGallery && cachedGallery.length > 0
           ? cachedGallery
-          : cachedMainData.gallery || [],
+          : cachedMainData.gallery && cachedMainData.gallery.length > 0
+          ? cachedMainData.gallery
+          : INITIAL_WEDDING_DATA.gallery || [],
     };
     onData(finalData);
   };

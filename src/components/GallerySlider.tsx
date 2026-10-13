@@ -98,11 +98,11 @@ export const GallerySlider: React.FC<GallerySliderProps> = ({ items, onOpenEditM
             {onOpenEditModal && (
               <button
                 onClick={onOpenEditModal}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-[#e2d5c5] hover:bg-[#f6eee3] text-[#8e5c33] text-xs font-semibold shadow-sm transition-all"
-                title="Tải thêm ảnh vào album cưới"
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#a06a3e] hover:bg-[#88572f] text-white text-xs font-semibold shadow-sm transition-all"
+                title="Tải ảnh cưới của bạn lên hoặc xóa ảnh mẫu"
               >
                 <Camera className="w-3.5 h-3.5" />
-                <span>Thêm ảnh</span>
+                <span>Quản lý & Tải album ảnh</span>
               </button>
             )}
           </div>

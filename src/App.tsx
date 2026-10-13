@@ -444,7 +444,7 @@ export default function App() {
       {/* Couple Story & Timeline */}
       <CoupleStorySection
         weddingData={weddingData}
-        onOpenEditModal={isHostMode ? () => handleOpenEditModal('couple') : undefined}
+        onOpenEditModal={() => handleOpenEditModal('couple')}
       />
 
       {/* Wedding Events Itinerary & Interactive Directions Map */}
@@ -456,11 +456,14 @@ export default function App() {
       {/* Elegant Sliding Wedding Photo Gallery */}
       <GallerySlider
         items={weddingData.gallery}
-        onOpenEditModal={isHostMode ? () => handleOpenEditModal('gallery') : undefined}
+        onOpenEditModal={() => handleOpenEditModal('gallery')}
       />
 
       {/* Secure Bank QR Code Gift Box (Nhà Trai & Nhà Gái) */}
-      <WeddingBoxQRSection weddingData={weddingData} />
+      <WeddingBoxQRSection
+        weddingData={weddingData}
+        onOpenEditModal={() => handleOpenEditModal('banks')}
+      />
 
       {/* Real-time Wishes & Guestbook Section */}
       <WishesSection

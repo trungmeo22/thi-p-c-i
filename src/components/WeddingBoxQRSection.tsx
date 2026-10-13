@@ -8,15 +8,21 @@ import {
   Download,
   CreditCard,
   Sparkles,
+  QrCode,
+  Pencil,
 } from 'lucide-react';
 import { WeddingData, BankAccount } from '../types';
 import { getVietQrUrl } from '../utils/weddingHelpers';
 
 interface WeddingBoxQRSectionProps {
   weddingData: WeddingData;
+  onOpenEditModal?: () => void;
 }
 
-export const WeddingBoxQRSection: React.FC<WeddingBoxQRSectionProps> = ({ weddingData }) => {
+export const WeddingBoxQRSection: React.FC<WeddingBoxQRSectionProps> = ({
+  weddingData,
+  onOpenEditModal,
+}) => {
   const [activeTab, setActiveTab] = useState<'groom' | 'bride'>('groom');
   const [copiedAcc, setCopiedAcc] = useState(false);
 
@@ -63,8 +69,8 @@ export const WeddingBoxQRSection: React.FC<WeddingBoxQRSectionProps> = ({ weddin
           </p>
         </div>
 
-        {/* Tab Switcher: Nhà Trai vs Nhà Gái */}
-        <div className="flex justify-center mb-8">
+        {/* Tab Switcher: Nhà Trai vs Nhà Gái & Chỉnh sửa */}
+        <div className="flex flex-wrap items-center justify-center gap-3 mb-8">
           <div className="bg-[#ede1d2] p-1.5 rounded-2xl flex items-center gap-2 shadow-inner">
             <button
               onClick={() => {
@@ -95,6 +101,17 @@ export const WeddingBoxQRSection: React.FC<WeddingBoxQRSectionProps> = ({ weddin
               <span>Mừng Nhà Gái ({weddingData.bride.name})</span>
             </button>
           </div>
+
+          {onOpenEditModal && (
+            <button
+              onClick={onOpenEditModal}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl bg-white border border-[#e2d5c5] hover:bg-[#f6eee3] text-[#8e5c33] text-xs font-semibold shadow-xs transition-all"
+              title="Đổi số tài khoản ngân hàng hoặc tải ảnh mã QR của bạn"
+            >
+              <QrCode className="w-4 h-4 text-[#a06a3e]" />
+              <span>Cập nhật STK / Ảnh QR</span>
+            </button>
+          )}
         </div>
 
         {/* Main Bank QR Card */}
@@ -107,7 +124,13 @@ export const WeddingBoxQRSection: React.FC<WeddingBoxQRSectionProps> = ({ weddin
         >
           {/* QR Image Column (Left 5 cols) */}
           <div className="md:col-span-5 flex flex-col items-center justify-center text-center">
-            <div className="p-3 bg-white rounded-2xl border-2 border-[#eeddcb] shadow-md inline-block relative group">
+            <div
+              onClick={onOpenEditModal}
+              className={`p-3 bg-white rounded-2xl border-2 border-[#eeddcb] shadow-md inline-block relative group ${
+                onOpenEditModal ? 'cursor-pointer hover:border-[#a06a3e] transition-all' : ''
+              }`}
+              title={onOpenEditModal ? 'Nhấp để thay đổi tài khoản hoặc tải ảnh QR của bạn' : undefined}
+            >
               <img
                 src={qrImageUrl}
                 alt={`Mã QR Mừng Cưới ${currentAccount.accountHolder}`}
@@ -116,6 +139,11 @@ export const WeddingBoxQRSection: React.FC<WeddingBoxQRSectionProps> = ({ weddin
               <div className="absolute top-2 right-2 bg-emerald-600 text-white p-1 rounded-full shadow" title="Mã VietQR Bảo Mật">
                 <ShieldCheck className="w-3.5 h-3.5" />
               </div>
+              {onOpenEditModal && (
+                <div className="absolute bottom-2 right-2 bg-[#a06a3e] hover:bg-[#88572f] text-white p-1.5 rounded-full shadow-md group-hover:scale-110 transition-transform flex items-center justify-center">
+                  <Pencil className="w-3.5 h-3.5" />
+                </div>
+              )}
             </div>
 
             <a
