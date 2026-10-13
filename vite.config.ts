@@ -64,9 +64,42 @@ function aistudioMediaPlugin(): Plugin {
 }
 // LINT.ThenChange(//depot/google3/java/com/google/alkali/boq/makersuite/applet_dev_service/templates/initializers/react_theme/vite.config.ts:aistudio_media_plugin)
 
+function vercelOutputPlugin(): Plugin {
+  return {
+    name: 'vercel-output-plugin',
+    closeBundle() {
+      try {
+        const vercelDir = path.resolve(__dirname, '.vercel', 'output');
+        const staticDir = path.join(vercelDir, 'static');
+        const distDir = path.resolve(__dirname, 'dist');
+        if (fs.existsSync(distDir)) {
+          fs.mkdirSync(staticDir, { recursive: true });
+          fs.cpSync(distDir, staticDir, { recursive: true });
+          fs.writeFileSync(
+            path.join(vercelDir, 'config.json'),
+            JSON.stringify(
+              {
+                version: 3,
+                routes: [
+                  { handle: 'filesystem' },
+                  { src: '/(.*)', dest: '/index.html' },
+                ],
+              },
+              null,
+              2
+            )
+          );
+        }
+      } catch (err) {
+        console.warn('Notice: Could not mirror build to .vercel/output:', err);
+      }
+    },
+  };
+}
+
 export default defineConfig(() => {
   return {
-    plugins: [react(), tailwindcss(), aistudioMediaPlugin()],
+    plugins: [react(), tailwindcss(), aistudioMediaPlugin(), vercelOutputPlugin()],
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
