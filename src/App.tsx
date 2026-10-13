@@ -279,18 +279,18 @@ export default function App() {
   // Sync weddingData to localStorage with quota-safe optimization
   useEffect(() => {
     try {
-      // In localStorage, store lightweight gallery without duplicating massive base64 strings
-      // because Firestore wedding_gallery collection handles full gallery persistence.
-      const safeToStore = {
-        ...weddingData,
-        gallery: weddingData.gallery.map((g) => ({
-          ...g,
-          url: g.url.startsWith('data:') ? '' : g.url,
-        })),
-      };
-      localStorage.setItem(STORAGE_KEYS.DATA, JSON.stringify(safeToStore));
+      localStorage.setItem(STORAGE_KEYS.DATA, JSON.stringify(weddingData));
     } catch {
-      // quota full or private browsing
+      // If localStorage quota exceeded, save with trimmed gallery
+      try {
+        const lightweight = {
+          ...weddingData,
+          gallery: weddingData.gallery.slice(0, 5),
+        };
+        localStorage.setItem(STORAGE_KEYS.DATA, JSON.stringify(lightweight));
+      } catch {
+        // Ignore private browsing or total quota block
+      }
     }
   }, [weddingData]);
 

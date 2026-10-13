@@ -106,7 +106,7 @@ export const EditWeddingModal: React.FC<EditWeddingModalProps> = ({
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      promises.push(compressImageFile(file, 850, 0.68));
+      promises.push(compressImageFile(file, 750, 0.65));
     }
 
     try {
@@ -122,7 +122,10 @@ export const EditWeddingModal: React.FC<EditWeddingModalProps> = ({
         const isAllMockups =
           prev.gallery.length === 0 ||
           prev.gallery.every(
-            (p) => p.id.startsWith('g-') || p.url.includes('images.unsplash.com')
+            (p) =>
+              p.id.startsWith('g-') ||
+              p.id.startsWith('photo_') ||
+              p.url.includes('images.unsplash.com')
           );
         const baseGallery = isAllMockups ? [] : prev.gallery;
         const newItems: GalleryItem[] = validUrls.map((url, i) => ({
@@ -151,7 +154,10 @@ export const EditWeddingModal: React.FC<EditWeddingModalProps> = ({
     setFormData((prev) => ({
       ...prev,
       gallery: prev.gallery.filter(
-        (p) => !p.id.startsWith('g-') && !p.url.includes('images.unsplash.com')
+        (p) =>
+          !p.id.startsWith('g-') &&
+          !p.id.startsWith('photo_') &&
+          !p.url.includes('images.unsplash.com')
       ),
     }));
   };
@@ -178,7 +184,10 @@ export const EditWeddingModal: React.FC<EditWeddingModalProps> = ({
       const isAllMockups =
         prev.gallery.length > 0 &&
         prev.gallery.every(
-          (p) => p.id.startsWith('g-') || p.url.includes('images.unsplash.com')
+          (p) =>
+            p.id.startsWith('g-') ||
+            p.id.startsWith('photo_') ||
+            p.url.includes('images.unsplash.com')
         );
       const baseGallery = isAllMockups ? [] : prev.gallery;
       return {
@@ -1411,7 +1420,7 @@ export const EditWeddingModal: React.FC<EditWeddingModalProps> = ({
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
-                  {formData.gallery.some((p) => p.id.startsWith('g-') || p.url.includes('images.unsplash.com')) && (
+                  {formData.gallery.some((p) => p.id.startsWith('g-') || p.id.startsWith('photo_') || p.url.includes('images.unsplash.com')) && (
                     <button
                       type="button"
                       onClick={handleClearMockupPhotos}
@@ -1445,7 +1454,7 @@ export const EditWeddingModal: React.FC<EditWeddingModalProps> = ({
               </div>
 
               {/* Mockup notice banner if album currently has mockups */}
-              {formData.gallery.some((p) => p.id.startsWith('g-') || p.url.includes('images.unsplash.com')) && (
+              {formData.gallery.some((p) => p.id.startsWith('g-') || p.id.startsWith('photo_') || p.url.includes('images.unsplash.com')) && (
                 <div className="p-3.5 rounded-2xl bg-amber-50/90 border border-amber-200/90 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs animate-in fade-in">
                   <div className="text-amber-900 leading-relaxed">
                     <span className="font-semibold block sm:inline">💡 Album hiện đang có ảnh mẫu minh họa mặc định:</span>{' '}

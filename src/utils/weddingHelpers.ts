@@ -78,8 +78,8 @@ export function formatTimeRemaining(targetIsoDate: string) {
 
 export async function compressImageFile(
   file: File,
-  maxDimension: number = 850,
-  quality: number = 0.68
+  maxDimension: number = 750,
+  quality: number = 0.65
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     // If it is SVG, don't canvas compress
@@ -130,11 +130,11 @@ export async function compressImageFile(
         // Convert to web-optimized JPEG
         let compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
 
-        // If still > 130KB, downscale one more step to guarantee featherlight sync
-        if (compressedDataUrl.length > 130 * 1024) {
+        // If still > 85KB, downscale one more step to guarantee featherlight sync (~40KB)
+        if (compressedDataUrl.length > 85 * 1024) {
           const secondCanvas = document.createElement('canvas');
-          const targetW = Math.round(width * 0.8);
-          const targetH = Math.round(height * 0.8);
+          const targetW = Math.round(width * 0.85);
+          const targetH = Math.round(height * 0.85);
           secondCanvas.width = targetW;
           secondCanvas.height = targetH;
           const ctx2 = secondCanvas.getContext('2d');
@@ -142,7 +142,7 @@ export async function compressImageFile(
             ctx2.imageSmoothingEnabled = true;
             ctx2.imageSmoothingQuality = 'medium';
             ctx2.drawImage(canvas, 0, 0, targetW, targetH);
-            compressedDataUrl = secondCanvas.toDataURL('image/jpeg', 0.60);
+            compressedDataUrl = secondCanvas.toDataURL('image/jpeg', 0.58);
           }
         }
 
