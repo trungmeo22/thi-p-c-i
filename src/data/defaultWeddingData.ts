@@ -4,14 +4,14 @@ export const INITIAL_WEDDING_DATA: WeddingData = {
   groom: {
     name: 'Bảo Trung',
     fullName: 'Lê Bảo Trung',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=800&q=80',
+    avatar: 'https://images.unsplash.com/photo-1594938298603-c8148c4dae35?auto=format&fit=crop&w=800&q=80',
     fatherName: 'Lê Quang Hải',
     motherName: 'Nguyễn Thị Thanh Thủy',
   },
   bride: {
     name: 'Lê Quỳnh',
     fullName: 'Lê Thị Quỳnh',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=80',
+    avatar: 'https://images.unsplash.com/photo-1595777457583-95e059d581b8?auto=format&fit=crop&w=800&q=80',
     fatherName: 'Lê Huy Tú',
     motherName: 'Trần Thị Thảo',
   },
@@ -21,8 +21,8 @@ export const INITIAL_WEDDING_DATA: WeddingData = {
   heroTagline: 'SAVE OUR SPECIAL DATE',
   heroQuote: 'Yêu không chỉ là nhìn nhau, mà là cùng nhau nhìn về một hướng và cùng viết nên một gia đình trọn vẹn.',
   quoteAuthor: 'Antoine de Saint-Exupéry',
-  coverImage: 'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=1920&q=85',
-  secondaryCoverImage: 'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?auto=format&fit=crop&w=1600&q=80',
+  coverImage: 'https://images.unsplash.com/photo-1583939003579-730e3918a45a?auto=format&fit=crop&w=1920&q=85',
+  secondaryCoverImage: 'https://images.unsplash.com/photo-1606800052052-a08af7148866?auto=format&fit=crop&w=1600&q=80',
   events: [
     {
       id: 'ceremony_bride',

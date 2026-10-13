@@ -70,6 +70,16 @@ export default function App() {
         ) {
           return INITIAL_WEDDING_DATA;
         }
+        // Upgrade legacy foreign mockups to elegant bridal aesthetics
+        if (parsed.groom?.avatar?.includes('1507003211169')) {
+          parsed.groom.avatar = INITIAL_WEDDING_DATA.groom.avatar;
+        }
+        if (parsed.bride?.avatar?.includes('1534528741775')) {
+          parsed.bride.avatar = INITIAL_WEDDING_DATA.bride.avatar;
+        }
+        if (parsed.coverImage?.includes('1519741497674')) {
+          parsed.coverImage = INITIAL_WEDDING_DATA.coverImage;
+        }
         if (parsed.groom) {
           delete parsed.groom.bio;
           delete parsed.groom.phone;

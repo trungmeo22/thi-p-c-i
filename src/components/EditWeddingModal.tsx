@@ -58,15 +58,19 @@ export const EditWeddingModal: React.FC<EditWeddingModalProps> = ({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isCompressingPhotos, setIsCompressingPhotos] = useState(false);
 
+  // Only initialize formData when modal transitions from closed to open
+  // This prevents background snapshot updates from resetting the user's in-progress changes!
+  const prevIsOpenRef = React.useRef(false);
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !prevIsOpenRef.current) {
       setFormData(data);
       setSaveError(null);
       if (initialTab) {
         setActiveTab(initialTab);
       }
     }
-  }, [isOpen, data, initialTab]);
+    prevIsOpenRef.current = isOpen;
+  }, [isOpen, initialTab, data]);
 
   // New photo input state
   const [newPhotoUrl, setNewPhotoUrl] = useState('');
@@ -78,12 +82,13 @@ export const EditWeddingModal: React.FC<EditWeddingModalProps> = ({
   // Helper to handle local file upload with auto-compression to ensure fast Firestore sync
   const handleFileUpload = async (
     e: React.ChangeEvent<HTMLInputElement>,
-    onSuccess: (base64Url: string) => void
+    onSuccess: (base64Url: string) => void,
+    maxDim: number = 800
   ) => {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const compressed = await compressImageFile(file, 800, 0.75);
+      const compressed = await compressImageFile(file, maxDim, 0.75);
       onSuccess(compressed);
     } catch (err) {
       console.error('Failed to compress image:', err);
@@ -109,19 +114,49 @@ export const EditWeddingModal: React.FC<EditWeddingModalProps> = ({
         .map((url, i) => ({
           id: `album_${Date.now()}_${i}`,
           url,
-          title: `Khoảnh khắc đẹp ${formData.gallery.length + i + 1}`,
+          title: `Khoảnh khắc đẹp ${i + 1}`,
           caption: 'Hạnh phúc ngày chung đôi',
         }));
-      setFormData((prev) => ({
-        ...prev,
-        gallery: [...prev.gallery, ...newItems],
-      }));
+
+      setFormData((prev) => {
+        // If current gallery only contains sample mockups, replace them completely with the newly uploaded photos!
+        const isAllMockups =
+          prev.gallery.length === 0 ||
+          prev.gallery.every(
+            (p) => p.id.startsWith('g-') || p.url.includes('images.unsplash.com')
+          );
+        const baseGallery = isAllMockups ? [] : prev.gallery;
+        return {
+          ...prev,
+          gallery: [...baseGallery, ...newItems],
+        };
+      });
     } catch (err) {
       console.error('Failed to process album photos:', err);
       alert('Có lỗi khi xử lý một số tệp ảnh. Vui lòng thử lại!');
     } finally {
       setIsCompressingPhotos(false);
       e.target.value = '';
+    }
+  };
+
+  // Quick helper to clear mockup photos
+  const handleClearMockupPhotos = () => {
+    setFormData((prev) => ({
+      ...prev,
+      gallery: prev.gallery.filter(
+        (p) => !p.id.startsWith('g-') && !p.url.includes('images.unsplash.com')
+      ),
+    }));
+  };
+
+  // Quick helper to clear all photos
+  const handleClearAllPhotos = () => {
+    if (window.confirm('Bạn có chắc muốn xóa tất cả ảnh trong album để tải bộ ảnh mới?')) {
+      setFormData((prev) => ({
+        ...prev,
+        gallery: [],
+      }));
     }
   };
 
@@ -133,10 +168,18 @@ export const EditWeddingModal: React.FC<EditWeddingModalProps> = ({
       title: newPhotoTitle.trim() || `Ảnh cưới ${formData.gallery.length + 1}`,
       caption: newPhotoCaption.trim() || undefined,
     };
-    setFormData((prev) => ({
-      ...prev,
-      gallery: [...prev.gallery, newItem],
-    }));
+    setFormData((prev) => {
+      const isAllMockups =
+        prev.gallery.length > 0 &&
+        prev.gallery.every(
+          (p) => p.id.startsWith('g-') || p.url.includes('images.unsplash.com')
+        );
+      const baseGallery = isAllMockups ? [] : prev.gallery;
+      return {
+        ...prev,
+        gallery: [...baseGallery, newItem],
+      };
+    });
     setNewPhotoUrl('');
     setNewPhotoTitle('');
     setNewPhotoCaption('');
@@ -467,12 +510,12 @@ export const EditWeddingModal: React.FC<EditWeddingModalProps> = ({
                     <img
                       src={formData.groom.avatar}
                       alt="Groom avatar"
-                      className="w-12 h-12 rounded-full object-cover border border-stone-300"
+                      className="w-14 h-14 rounded-full object-cover border-2 border-[#a06a3e]/40 shadow-sm shrink-0"
                     />
-                    <div className="flex-1 flex gap-2">
+                    <div className="flex-1 flex flex-col sm:flex-row gap-2">
                       <input
                         type="text"
-                        placeholder="Link ảnh online (URL)..."
+                        placeholder="Dán link ảnh online (URL)..."
                         value={formData.groom.avatar}
                         onChange={(e) =>
                           setFormData({
@@ -482,19 +525,22 @@ export const EditWeddingModal: React.FC<EditWeddingModalProps> = ({
                         }
                         className="flex-1 px-3 py-1.5 rounded-xl bg-white border border-stone-300 text-xs focus:outline-none"
                       />
-                      <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 border border-stone-300 text-xs font-medium text-stone-700 shrink-0">
+                      <label className="cursor-pointer inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#a06a3e] hover:bg-[#88572f] text-white text-xs font-semibold shadow-xs shrink-0 transition-colors">
                         <Upload className="w-3.5 h-3.5" />
-                        <span>Tải tệp ảnh</span>
+                        <span>Tải ảnh chú rể</span>
                         <input
                           type="file"
                           accept="image/*"
                           className="hidden"
                           onChange={(e) =>
-                            handleFileUpload(e, (url) =>
-                              setFormData({
-                                ...formData,
-                                groom: { ...formData.groom, avatar: url },
-                              })
+                            handleFileUpload(
+                              e,
+                              (url) =>
+                                setFormData({
+                                  ...formData,
+                                  groom: { ...formData.groom, avatar: url },
+                                }),
+                              600
                             )
                           }
                         />
@@ -588,12 +634,12 @@ export const EditWeddingModal: React.FC<EditWeddingModalProps> = ({
                     <img
                       src={formData.bride.avatar}
                       alt="Bride avatar"
-                      className="w-12 h-12 rounded-full object-cover border border-stone-300"
+                      className="w-14 h-14 rounded-full object-cover border-2 border-rose-300 shadow-sm shrink-0"
                     />
-                    <div className="flex-1 flex gap-2">
+                    <div className="flex-1 flex flex-col sm:flex-row gap-2">
                       <input
                         type="text"
-                        placeholder="Link ảnh online (URL)..."
+                        placeholder="Dán link ảnh online (URL)..."
                         value={formData.bride.avatar}
                         onChange={(e) =>
                           setFormData({
@@ -603,19 +649,22 @@ export const EditWeddingModal: React.FC<EditWeddingModalProps> = ({
                         }
                         className="flex-1 px-3 py-1.5 rounded-xl bg-white border border-stone-300 text-xs focus:outline-none"
                       />
-                      <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 border border-stone-300 text-xs font-medium text-stone-700 shrink-0">
+                      <label className="cursor-pointer inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold shadow-xs shrink-0 transition-colors">
                         <Upload className="w-3.5 h-3.5" />
-                        <span>Tải tệp ảnh</span>
+                        <span>Tải ảnh cô dâu</span>
                         <input
                           type="file"
                           accept="image/*"
                           className="hidden"
                           onChange={(e) =>
-                            handleFileUpload(e, (url) =>
-                              setFormData({
-                                ...formData,
-                                bride: { ...formData.bride, avatar: url },
-                              })
+                            handleFileUpload(
+                              e,
+                              (url) =>
+                                setFormData({
+                                  ...formData,
+                                  bride: { ...formData.bride, avatar: url },
+                                }),
+                              600
                             )
                           }
                         />
@@ -1271,15 +1320,56 @@ export const EditWeddingModal: React.FC<EditWeddingModalProps> = ({
                     Đang có <span className="font-bold text-[#9b683e]">{formData.gallery.length}</span> bức ảnh hiển thị trên slide trượt và album lưới của thiệp cưới.
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleRestoreDefaultGallery}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-stone-50 border border-[#dfcebc] text-stone-700 text-xs font-medium shadow-sm transition-all shrink-0 self-start sm:self-auto"
-                >
-                  <RotateCcw className="w-3.5 h-3.5 text-stone-500" />
-                  <span>Khôi phục ảnh mẫu</span>
-                </button>
+                <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+                  {formData.gallery.some((p) => p.id.startsWith('g-') || p.url.includes('images.unsplash.com')) && (
+                    <button
+                      type="button"
+                      onClick={handleClearMockupPhotos}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold shadow-xs transition-all"
+                      title="Xóa toàn bộ ảnh mẫu minh họa ban đầu để chỉ giữ lại ảnh cưới thật của bạn"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Xóa ảnh mẫu (Mockup)</span>
+                    </button>
+                  )}
+                  {formData.gallery.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleClearAllPhotos}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-rose-50 border border-stone-300 hover:border-rose-300 text-stone-600 hover:text-rose-600 text-xs font-medium shadow-xs transition-all"
+                      title="Xóa toàn bộ ảnh trong album để tải bộ ảnh mới"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Làm trống album</span>
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleRestoreDefaultGallery}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-stone-50 border border-[#dfcebc] text-stone-700 text-xs font-medium shadow-xs transition-all"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5 text-stone-500" />
+                    <span>Khôi phục mẫu</span>
+                  </button>
+                </div>
               </div>
+
+              {/* Mockup notice banner if album currently has mockups */}
+              {formData.gallery.some((p) => p.id.startsWith('g-') || p.url.includes('images.unsplash.com')) && (
+                <div className="p-3.5 rounded-2xl bg-amber-50/90 border border-amber-200/90 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs animate-in fade-in">
+                  <div className="text-amber-900 leading-relaxed">
+                    <span className="font-semibold block sm:inline">💡 Album hiện đang có ảnh mẫu minh họa mặc định:</span>{' '}
+                    <span>Khi bạn chọn tải ảnh của bạn lên từ máy tính hoặc điện thoại, các ảnh mẫu này sẽ được tự động thay thế bằng ảnh cưới của hai bạn!</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleClearMockupPhotos}
+                    className="px-3 py-1.5 rounded-xl bg-amber-700 hover:bg-amber-800 text-white font-semibold text-xs shrink-0 transition-colors shadow-xs"
+                  >
+                    Xóa sạch ảnh mẫu ngay
+                  </button>
+                </div>
+              )}
 
               {/* Upload New Photos Section */}
               <div className="p-4 rounded-2xl bg-white border-2 border-dashed border-[#e2d2c1] space-y-4">
@@ -1848,70 +1938,132 @@ export const EditWeddingModal: React.FC<EditWeddingModalProps> = ({
 
           {/* TAB: PHOTOS & MUSIC */}
           {activeTab === 'photos' && (
-            <div className="space-y-4">
-              <div>
-                <label className="block text-[11px] font-semibold text-stone-700 mb-1">
-                  Ảnh bìa chính (Hero Banner Background)
-                </label>
-                <div className="flex items-center gap-3">
+            <div className="space-y-5">
+              {/* Main Cover Image */}
+              <div className="p-4 rounded-2xl bg-[#faf6f0] border border-[#eee2d3] space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-semibold text-stone-800">
+                    Ảnh Bìa Chính (Hero Banner Background)
+                  </label>
+                  <span className="text-[10px] text-stone-500">Hiển thị toàn màn hình phần mở đầu thiệp</span>
+                </div>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
                   <img
                     src={formData.coverImage}
                     alt="Cover preview"
-                    className="w-16 h-12 rounded-lg object-cover border border-stone-300"
+                    className="w-24 h-16 rounded-xl object-cover border border-stone-300 shadow-sm shrink-0"
                   />
-                  <input
-                    type="text"
-                    value={formData.coverImage}
-                    onChange={(e) => setFormData({ ...formData, coverImage: e.target.value })}
-                    className="flex-1 px-3 py-1.5 rounded-xl bg-white border border-stone-300 text-xs focus:outline-none"
-                    placeholder="Nhập đường link ảnh..."
-                  />
-                  <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 border border-stone-300 text-xs font-medium text-stone-700 shrink-0">
-                    <Upload className="w-3.5 h-3.5" />
-                    <span>Tải tệp ảnh</span>
+                  <div className="flex-1 flex flex-col sm:flex-row gap-2 w-full">
                     <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) =>
-                        handleFileUpload(e, (url) =>
-                          setFormData({ ...formData, coverImage: url })
-                        )
-                      }
+                      type="text"
+                      value={formData.coverImage}
+                      onChange={(e) => setFormData({ ...formData, coverImage: e.target.value })}
+                      className="flex-1 px-3 py-2 rounded-xl bg-white border border-stone-300 text-xs focus:outline-none"
+                      placeholder="Nhập link ảnh online (https://...)"
                     />
-                  </label>
+                    <label className="cursor-pointer inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-[#a06a3e] hover:bg-[#88572f] text-white text-xs font-semibold shadow-xs shrink-0 transition-colors">
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>Tải ảnh từ máy</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) =>
+                          handleFileUpload(e, (url) =>
+                            setFormData({ ...formData, coverImage: url }),
+                            1200
+                          )
+                        }
+                      />
+                    </label>
+                  </div>
                 </div>
               </div>
 
-              <div>
-                <label className="block text-[11px] font-semibold text-stone-700 mb-1">
-                  Tên bài hát và đường dẫn nhạc nền (.mp3)
-                </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <input
-                    type="text"
-                    placeholder="Tên bài hát"
-                    value={formData.audioTrack.title}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        audioTrack: { ...formData.audioTrack, title: e.target.value },
-                      })
-                    }
-                    className="px-3 py-2 rounded-xl bg-white border border-stone-300"
+              {/* Secondary Cover Image */}
+              <div className="p-4 rounded-2xl bg-[#faf6f0] border border-[#eee2d3] space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-semibold text-stone-800">
+                    Ảnh Nền Phụ (Secondary Cover / Countdown)
+                  </label>
+                  <span className="text-[10px] text-stone-500">Ảnh nền phụ cho các phần nội dung thiệp</span>
+                </div>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                  <img
+                    src={formData.secondaryCoverImage || formData.coverImage}
+                    alt="Secondary cover preview"
+                    className="w-24 h-16 rounded-xl object-cover border border-stone-300 shadow-sm shrink-0"
                   />
-                  <input
-                    type="text"
-                    placeholder="Link tệp âm thanh (mp3)"
-                    value={formData.audioTrack.src}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        audioTrack: { ...formData.audioTrack, src: e.target.value },
-                      })
-                    }
-                    className="px-3 py-2 rounded-xl bg-white border border-stone-300"
-                  />
+                  <div className="flex-1 flex flex-col sm:flex-row gap-2 w-full">
+                    <input
+                      type="text"
+                      value={formData.secondaryCoverImage || ''}
+                      onChange={(e) => setFormData({ ...formData, secondaryCoverImage: e.target.value })}
+                      className="flex-1 px-3 py-2 rounded-xl bg-white border border-stone-300 text-xs focus:outline-none"
+                      placeholder="Nhập link ảnh phụ..."
+                    />
+                    <label className="cursor-pointer inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-stone-700 hover:bg-stone-800 text-white text-xs font-semibold shadow-xs shrink-0 transition-colors">
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>Tải ảnh phụ</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) =>
+                          handleFileUpload(e, (url) =>
+                            setFormData({ ...formData, secondaryCoverImage: url }),
+                            1200
+                          )
+                        }
+                      />
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              {/* Music Settings */}
+              <div className="p-4 rounded-2xl bg-white border border-stone-200 space-y-3">
+                <div className="flex items-center gap-2 pb-1 border-b border-stone-100">
+                  <Music className="w-4 h-4 text-[#a06a3e]" />
+                  <h5 className="font-semibold text-stone-800 text-xs uppercase tracking-wider">
+                    Nhạc Nền Hôn Lễ (.mp3)
+                  </h5>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-semibold text-stone-600 mb-1">
+                      Tên bài hát hiển thị
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Tên bài hát (VD: A Thousand Years)"
+                      value={formData.audioTrack.title}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          audioTrack: { ...formData.audioTrack, title: e.target.value },
+                        })
+                      }
+                      className="w-full px-3 py-2 rounded-xl bg-stone-50 border border-stone-300 text-xs focus:bg-white focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-stone-600 mb-1">
+                      Đường dẫn tệp nhạc (.mp3)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="VD: /wedding_music.mp3 hoặc https://..."
+                      value={formData.audioTrack.src}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          audioTrack: { ...formData.audioTrack, src: e.target.value },
+                        })
+                      }
+                      className="w-full px-3 py-2 rounded-xl bg-stone-50 border border-stone-300 text-xs focus:bg-white focus:outline-none"
+                    />
+                  </div>
                 </div>
               </div>
             </div>

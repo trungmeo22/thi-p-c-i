@@ -145,20 +145,20 @@ export function subscribeToWeddingData(
   const unsubGallery = onSnapshot(
     galleryQuery,
     (snapshot) => {
-      if (!snapshot.empty) {
-        const items: GalleryItem[] = [];
-        snapshot.forEach((docSnap) => {
-          const item = docSnap.data();
+      const items: GalleryItem[] = [];
+      snapshot.forEach((docSnap) => {
+        const item = docSnap.data();
+        if (item.url) {
           items.push({
             id: docSnap.id,
-            url: item.url || '',
+            url: item.url,
             title: item.title || '',
             caption: item.caption || undefined,
           });
-        });
-        cachedGallery = items;
-        emitMergedData();
-      }
+        }
+      });
+      cachedGallery = items;
+      emitMergedData();
     },
     (error) => {
       console.warn('Gallery collection sync notice:', error);
@@ -208,19 +208,33 @@ export async function saveWeddingDataToFirestore(data: WeddingData): Promise<voi
       } catch (cleanErr) {
         console.warn('Could not clean old gallery photos:', cleanErr);
       }
+    } else {
+      // If gallery is explicitly emptied, remove all docs in wedding_gallery
+      try {
+        const currentGalleryDocs = await getDocs(collection(db, 'wedding_gallery'));
+        const deletePromises: Promise<void>[] = [];
+        currentGalleryDocs.forEach((docSnap) => {
+          deletePromises.push(deleteDoc(docSnap.ref));
+        });
+        if (deletePromises.length > 0) {
+          await Promise.all(deletePromises);
+        }
+      } catch (cleanErr) {
+        console.warn('Could not clear empty gallery:', cleanErr);
+      }
     }
 
     // 2. Save wedding_data/main document
-    // If the full data fits under 700KB, keep it all in wedding_data/main for backward compatibility.
+    // If the full data fits under 500KB, keep it all in wedding_data/main.
     // If oversized due to images, save lightweight gallery references in main document.
-    let dataToSaveInMain = data;
+    let dataToSaveInMain = { ...data };
     const jsonString = JSON.stringify(data);
-    if (jsonString.length > 700 * 1024) {
+    if (jsonString.length > 500 * 1024) {
       dataToSaveInMain = {
         ...data,
         gallery: data.gallery.map((p) => ({
           id: p.id,
-          url: p.url.startsWith('data:') ? '' : p.url, // Full image is already saved in wedding_gallery
+          url: p.url.startsWith('data:') ? '' : p.url,
           title: p.title,
           caption: p.caption,
         })),
