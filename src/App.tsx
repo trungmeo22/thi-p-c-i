@@ -34,7 +34,7 @@ import {
 } from './lib/firebase';
 
 const STORAGE_KEYS = {
-  DATA: 'wedding_invitation_data_v1',
+  DATA: 'wedding_invitation_data_v2',
   GUESTS: 'wedding_invitation_guests_v1',
 };
 
@@ -43,7 +43,7 @@ const INITIAL_WISHES: WeddingWish[] = [
     id: 'w-default-1',
     senderName: 'Hoàng Long & Thu Hà',
     relationship: 'Bạn thân',
-    message: 'Chúc hai bạn trăm năm hạnh phúc, đầu bạc răng long, mãi mãi gắn kết yêu thương như ngày đầu!',
+    message: 'Chúc hai bạn Trung & Quỳnh trăm năm hạnh phúc, đầu bạc răng long, mãi mãi gắn kết yêu thương như ngày đầu!',
     createdAt: new Date(Date.now() - 3600000 * 24).toISOString(),
     likes: 8,
   },
@@ -51,7 +51,7 @@ const INITIAL_WISHES: WeddingWish[] = [
     id: 'w-default-2',
     senderName: 'Gia đình Bác Thành',
     relationship: 'Họ hàng',
-    message: 'Chúc đôi uyên ương vạn sự cát tường, sớm sinh quý tử, gia đình luôn hòa thuận và ngập tràn niềm vui!',
+    message: 'Chúc đôi uyên ương Bảo Trung & Lê Quỳnh vạn sự cát tường, sớm sinh quý tử, gia đình luôn hòa thuận và ngập tràn niềm vui!',
     createdAt: new Date(Date.now() - 3600000 * 12).toISOString(),
     likes: 12,
   },
@@ -64,6 +64,12 @@ export default function App() {
       const saved = localStorage.getItem(STORAGE_KEYS.DATA);
       if (saved) {
         const parsed = JSON.parse(saved);
+        if (
+          parsed.groom?.name === 'Minh Quang' ||
+          parsed.groom?.fullName === 'Nguyễn Minh Quang'
+        ) {
+          return INITIAL_WEDDING_DATA;
+        }
         if (parsed.groom) {
           delete parsed.groom.bio;
           delete parsed.groom.phone;
@@ -267,6 +273,16 @@ export default function App() {
   useEffect(() => {
     const unsubWedding = subscribeToWeddingData((data) => {
       if (data && data.groom && data.bride) {
+        if (
+          data.groom.fullName === 'Nguyễn Minh Quang' ||
+          data.groom.name === 'Minh Quang'
+        ) {
+          saveWeddingDataToFirestore(INITIAL_WEDDING_DATA).catch((err) =>
+            console.warn('Update cloud with real couple info:', err)
+          );
+          setWeddingData(INITIAL_WEDDING_DATA);
+          return;
+        }
         setWeddingData(data);
       }
     });
