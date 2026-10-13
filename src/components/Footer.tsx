@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Heart, Share2, Check, ArrowUp, Lock } from 'lucide-react';
+import { Heart, Share2, Check, ArrowUp } from 'lucide-react';
 import { WeddingData } from '../types';
 
 interface FooterProps {
@@ -98,20 +98,6 @@ export const Footer: React.FC<FooterProps> = ({
           >
             <ArrowUp className="w-4 h-4" />
           </button>
-        </div>
-
-        {/* Discreet Host trigger in footer for couple */}
-        <div className="pt-8 text-[11px] text-stone-500 flex items-center justify-center gap-2">
-          <span>Hạnh phúc đong đầy • Yêu thương gắn kết</span>
-          {onOpenAuthModal && (
-            <button
-              onClick={onOpenAuthModal}
-              className="opacity-25 hover:opacity-100 p-1 rounded text-stone-400 hover:text-amber-300 transition-all"
-              title="Đăng nhập Chủ Tiệc (Dâu & Rể)"
-            >
-              <Lock className="w-3 h-3" />
-            </button>
-          )}
         </div>
       </div>
     </footer>

@@ -94,10 +94,6 @@ export const RsvpSection: React.FC<RsvpSectionProps> = ({ onAddGuest, guestName 
           <h2 className="font-serif-display text-3xl sm:text-5xl text-[#2e231c] font-normal mb-4">
             Sổ Đăng Ký Khách Mời
           </h2>
-          <p className="text-stone-500 text-sm font-light leading-relaxed">
-            Để gia đình chuẩn bị chu đáo nhất cho buổi tiệc, xin quý khách vui lòng phản hồi trước ngày{' '}
-            <strong className="text-stone-700 font-semibold">20 / 11 / 2026</strong>.
-          </p>
         </div>
 
         {/* Card Container */}
