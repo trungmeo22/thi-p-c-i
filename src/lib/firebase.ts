@@ -130,12 +130,17 @@ export function subscribeToWeddingData(
           ? cachedMainData.story
           : INITIAL_WEDDING_DATA.story,
       // If we have custom gallery items in wedding_gallery collection, use them
-      gallery:
-        cachedGallery && cachedGallery.length > 0
-          ? cachedGallery
-          : cachedMainData.gallery && cachedMainData.gallery.length > 0
-          ? cachedMainData.gallery
-          : INITIAL_WEDDING_DATA.gallery || [],
+      gallery: (() => {
+        let gal =
+          cachedGallery && cachedGallery.length > 0
+            ? cachedGallery
+            : cachedMainData.gallery && cachedMainData.gallery.length > 0
+            ? cachedMainData.gallery
+            : INITIAL_WEDDING_DATA.gallery || [];
+        // Make sure all gallery items have a valid non-empty url
+        gal = gal.filter((p) => p && typeof p.url === 'string' && p.url.trim().length > 0);
+        return gal.length > 0 ? gal : INITIAL_WEDDING_DATA.gallery;
+      })(),
     };
     onData(finalData);
   };

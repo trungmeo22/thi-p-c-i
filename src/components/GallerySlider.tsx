@@ -146,24 +146,17 @@ export const GallerySlider: React.FC<GallerySliderProps> = ({ items, onOpenEditM
           <div className="relative max-w-4xl mx-auto">
             {/* Main Active Slide Display */}
             <div className="relative h-[380px] sm:h-[520px] md:h-[600px] rounded-3xl overflow-hidden shadow-2xl border-4 border-white bg-stone-900 group">
-              <AnimatePresence mode="wait">
-                <motion.img
-                  key={currentItem.id || activeIndex}
-                  src={currentItem.url}
-                  alt={currentItem.title || 'Ảnh cưới'}
-                  referrerPolicy="no-referrer"
-                  initial={{ opacity: 0, scale: 1.02 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.98 }}
-                  transition={{ duration: 0.4 }}
-                  className="w-full h-full object-cover select-none cursor-pointer"
-                  onClick={() => setLightboxIndex(activeIndex)}
-                  onError={(e) => {
-                    // Fallback to high-res wedding placeholder if external URL fails
-                    (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=1200&q=85';
-                  }}
-                />
-              </AnimatePresence>
+              <img
+                key={`slide-${currentItem.id || activeIndex}`}
+                src={currentItem.url}
+                alt={currentItem.title || 'Ảnh cưới'}
+                crossOrigin="anonymous"
+                className="w-full h-full object-cover select-none cursor-pointer transition-opacity duration-300"
+                onClick={() => setLightboxIndex(activeIndex)}
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=1200&q=85';
+                }}
+              />
 
               {/* Caption Overlay */}
               <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-6 sm:p-8 text-white flex items-end justify-between pointer-events-none">

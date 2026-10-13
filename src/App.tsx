@@ -103,6 +103,21 @@ export default function App() {
         ) {
           parsed.audioTrack = INITIAL_WEDDING_DATA.audioTrack;
         }
+
+        if (
+          !parsed.gallery ||
+          !Array.isArray(parsed.gallery) ||
+          parsed.gallery.length === 0 ||
+          parsed.gallery.every((g: any) => !g.url || g.url.trim() === '')
+        ) {
+          parsed.gallery = INITIAL_WEDDING_DATA.gallery;
+        } else {
+          // Filter out any broken items with empty URLs
+          parsed.gallery = parsed.gallery.filter((g: any) => g && g.url && g.url.trim() !== '');
+          if (parsed.gallery.length === 0) {
+            parsed.gallery = INITIAL_WEDDING_DATA.gallery;
+          }
+        }
         return parsed;
       }
     } catch {
