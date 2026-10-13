@@ -63,7 +63,7 @@ service cloud.firestore {
     match /wedding_data/{docId} {
       function isValidWeddingContent(data) {
         return data.keys().hasAll(['weddingDataJson', 'updatedAt']) &&
-               data.weddingDataJson is string && data.weddingDataJson.size() <= 500000 &&
+               data.weddingDataJson is string && data.weddingDataJson.size() <= 1048576 &&
                data.updatedAt is string && data.updatedAt.size() <= 100;
       }
 

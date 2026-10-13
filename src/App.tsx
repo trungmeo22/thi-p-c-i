@@ -20,7 +20,7 @@ import { GuestManagementModal } from './components/GuestManagementModal';
 import { EditWeddingModal } from './components/EditWeddingModal';
 import { AdminAuthModal } from './components/AdminAuthModal';
 import { ShareModal } from './components/ShareModal';
-import { Share2 } from 'lucide-react';
+import { Share2, CloudUpload, RefreshCw } from 'lucide-react';
 import {
   subscribeToWeddingData,
   saveWeddingDataToFirestore,
@@ -111,18 +111,33 @@ export default function App() {
 
   const [isHostMode, setIsHostMode] = useState<boolean>(() => {
     try {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get('admin') === 'true' || params.get('mode') === 'host') {
-        return true;
-      }
-      return (
-        localStorage.getItem('wedding_host_authenticated') === 'true' ||
-        sessionStorage.getItem('wedding_host_authenticated') === 'true'
-      );
+      // By default, NEVER activate host mode for guests.
+      // Only active if session explicitly unlocked with PIN.
+      return sessionStorage.getItem('wedding_host_authenticated') === 'true';
     } catch {
       return false;
     }
   });
+
+  // Auto-sync custom local wedding data to Firestore if not yet synced
+  useEffect(() => {
+    try {
+      const savedStr = localStorage.getItem(STORAGE_KEYS.DATA);
+      if (savedStr) {
+        const savedData = JSON.parse(savedStr) as WeddingData;
+        if (
+          savedData.groom?.name &&
+          savedData.groom?.name !== INITIAL_WEDDING_DATA.groom.name
+        ) {
+          saveWeddingDataToFirestore(savedData).catch((err) => {
+            console.warn('Auto-sync to Firestore notice:', err);
+          });
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
 
   // Personalized Guest Name from URL parameter (?to=GuestName or ?guest=GuestName)
   const [guestName, setGuestName] = useState<string>(() => {
@@ -139,19 +154,18 @@ export default function App() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isGuestModalOpen, setIsGuestModalOpen] = useState(false);
   const [saveToast, setSaveToast] = useState<string | null>(null);
+  const [isSyncingCloud, setIsSyncingCloud] = useState(false);
   const [pendingAction, setPendingAction] = useState<{
     type: 'edit' | 'guest';
     tab?: 'couple' | 'gallery' | 'banks' | 'datetime' | 'venues' | 'photos';
   } | null>(null);
 
-  // Auto prompt for PIN if ?admin is in URL but user isn't authenticated yet
+  // Auto prompt for PIN if ?admin is in URL but user isn't authenticated in this session
   useEffect(() => {
     try {
       const params = new URLSearchParams(window.location.search);
       const hasAdmin = params.get('admin') !== null || params.get('mode') === 'host';
-      const isAuth =
-        localStorage.getItem('wedding_host_authenticated') === 'true' ||
-        sessionStorage.getItem('wedding_host_authenticated') === 'true';
+      const isAuth = sessionStorage.getItem('wedding_host_authenticated') === 'true';
       if (hasAdmin && !isAuth) {
         setIsAuthModalOpen(true);
       }
@@ -170,6 +184,8 @@ export default function App() {
 
   const handleUnlockHostMode = () => {
     setIsHostMode(true);
+    sessionStorage.setItem('wedding_host_authenticated', 'true');
+    localStorage.setItem('wedding_host_authenticated', 'true');
     if (pendingAction) {
       if (pendingAction.type === 'edit') {
         setEditModalTab(pendingAction.tab || 'couple');
@@ -190,8 +206,22 @@ export default function App() {
     sessionStorage.removeItem('wedding_host_authenticated');
     setIsEditModalOpen(false);
     setIsGuestModalOpen(false);
-    setSaveToast('Đã khóa Chế độ Chủ Tiệc. Bạn đang xem giao diện như khách mời!');
+    setSaveToast('Đã khóa Chế độ Chủ Tiệc. Bạn đang xem giao diện sạch như khách mời!');
     setTimeout(() => setSaveToast(null), 3500);
+  };
+
+  const handleSyncToCloud = async () => {
+    setIsSyncingCloud(true);
+    try {
+      await saveWeddingDataToFirestore(weddingData);
+      setSaveToast('Đã đồng bộ thành công lên Firebase Cloud! Tất cả thiết bị khác và khách mời sẽ thấy dữ liệu này.');
+    } catch (err) {
+      console.error('Failed to sync to cloud:', err);
+      setSaveToast('Lỗi khi đồng bộ lên Firebase. Vui lòng thử lại sau giây lát!');
+    } finally {
+      setIsSyncingCloud(false);
+      setTimeout(() => setSaveToast(null), 4000);
+    }
   };
 
   const handleOpenEditModal = (
@@ -438,7 +468,16 @@ export default function App() {
             title="Lấy link thiệp sạch để gửi cho khách"
           >
             <Share2 className="w-3.5 h-3.5" />
-            <span>Chia Sẻ Thiệp</span>
+            <span>Chia Sẻ Link</span>
+          </button>
+          <button
+            onClick={handleSyncToCloud}
+            disabled={isSyncingCloud}
+            className="px-2.5 py-1 rounded-full bg-sky-600/30 hover:bg-sky-600/50 text-sky-200 font-semibold transition-colors flex items-center gap-1"
+            title="Đồng bộ ngay dữ liệu lên Firebase Firestore để mọi thiết bị đều cập nhật"
+          >
+            <CloudUpload className={`w-3.5 h-3.5 ${isSyncingCloud ? 'animate-bounce' : ''}`} />
+            <span>{isSyncingCloud ? 'Đang gửi...' : 'Đồng Bộ Cloud'}</span>
           </button>
           <button
             onClick={handleLockHostMode}

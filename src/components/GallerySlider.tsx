@@ -14,7 +14,7 @@ import { GalleryItem } from '../types';
 
 interface GallerySliderProps {
   items: GalleryItem[];
-  onOpenEditModal: () => void;
+  onOpenEditModal?: () => void;
 }
 
 export const GallerySlider: React.FC<GallerySliderProps> = ({ items, onOpenEditModal }) => {
@@ -95,14 +95,16 @@ export const GallerySlider: React.FC<GallerySliderProps> = ({ items, onOpenEditM
               </button>
             </div>
 
-            <button
-              onClick={onOpenEditModal}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-[#e2d5c5] hover:bg-[#f6eee3] text-[#8e5c33] text-xs font-semibold shadow-sm transition-all"
-              title="Tải thêm ảnh vào album cưới"
-            >
-              <Camera className="w-3.5 h-3.5" />
-              <span>Thêm ảnh</span>
-            </button>
+            {onOpenEditModal && (
+              <button
+                onClick={onOpenEditModal}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-[#e2d5c5] hover:bg-[#f6eee3] text-[#8e5c33] text-xs font-semibold shadow-sm transition-all"
+                title="Tải thêm ảnh vào album cưới"
+              >
+                <Camera className="w-3.5 h-3.5" />
+                <span>Thêm ảnh</span>
+              </button>
+            )}
           </div>
         </div>
 

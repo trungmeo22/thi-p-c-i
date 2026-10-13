@@ -5,7 +5,7 @@ import { WeddingData } from '../types';
 
 interface CoupleStorySectionProps {
   weddingData: WeddingData;
-  onOpenEditModal: () => void;
+  onOpenEditModal?: () => void;
 }
 
 export const CoupleStorySection: React.FC<CoupleStorySectionProps> = ({
@@ -53,13 +53,15 @@ export const CoupleStorySection: React.FC<CoupleStorySectionProps> = ({
                   className="w-full h-full object-cover rounded-full group-hover:scale-105 transition-transform duration-500"
                 />
               </div>
-              <button
-                onClick={onOpenEditModal}
-                className="absolute bottom-2 right-2 p-2.5 rounded-full bg-white text-stone-700 shadow-md border border-stone-200 hover:bg-[#f6eee4] hover:text-[#976337] transition-all"
-                title="Thay đổi ảnh chú rể"
-              >
-                <Camera className="w-4 h-4" />
-              </button>
+              {onOpenEditModal && (
+                <button
+                  onClick={onOpenEditModal}
+                  className="absolute bottom-2 right-2 p-2.5 rounded-full bg-white text-stone-700 shadow-md border border-stone-200 hover:bg-[#f6eee4] hover:text-[#976337] transition-all"
+                  title="Thay đổi ảnh chú rể"
+                >
+                  <Camera className="w-4 h-4" />
+                </button>
+              )}
             </div>
 
             <span className="text-[11px] uppercase tracking-[0.25em] text-[#9b663b] font-semibold bg-[#faf1e8] px-3 py-1 rounded-full mb-3">
@@ -99,13 +101,15 @@ export const CoupleStorySection: React.FC<CoupleStorySectionProps> = ({
                   className="w-full h-full object-cover rounded-full group-hover:scale-105 transition-transform duration-500"
                 />
               </div>
-              <button
-                onClick={onOpenEditModal}
-                className="absolute bottom-2 right-2 p-2.5 rounded-full bg-white text-stone-700 shadow-md border border-stone-200 hover:bg-[#f6eee4] hover:text-[#976337] transition-all"
-                title="Thay đổi ảnh cô dâu"
-              >
-                <Camera className="w-4 h-4" />
-              </button>
+              {onOpenEditModal && (
+                <button
+                  onClick={onOpenEditModal}
+                  className="absolute bottom-2 right-2 p-2.5 rounded-full bg-white text-stone-700 shadow-md border border-stone-200 hover:bg-[#f6eee4] hover:text-[#976337] transition-all"
+                  title="Thay đổi ảnh cô dâu"
+                >
+                  <Camera className="w-4 h-4" />
+                </button>
+              )}
             </div>
 
             <span className="text-[11px] uppercase tracking-[0.25em] text-[#9b663b] font-semibold bg-[#faf1e8] px-3 py-1 rounded-full mb-3">

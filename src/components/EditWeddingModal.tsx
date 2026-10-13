@@ -28,7 +28,7 @@ import {
 } from 'lucide-react';
 import { WeddingData, GalleryItem, WeddingEvent } from '../types';
 import { POPULAR_BANKS, INITIAL_WEDDING_DATA } from '../data/defaultWeddingData';
-import { getVietQrUrl } from '../utils/weddingHelpers';
+import { getVietQrUrl, compressImageFile } from '../utils/weddingHelpers';
 
 interface EditWeddingModalProps {
   isOpen: boolean;
@@ -69,44 +69,34 @@ export const EditWeddingModal: React.FC<EditWeddingModalProps> = ({
 
   if (!isOpen) return null;
 
-  // Helper to handle local file upload to Base64
-  const handleFileUpload = (
+  // Helper to handle local file upload with auto-compression to ensure fast Firestore sync
+  const handleFileUpload = async (
     e: React.ChangeEvent<HTMLInputElement>,
     onSuccess: (base64Url: string) => void
   ) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      if (typeof event.target?.result === 'string') {
-        onSuccess(event.target.result);
-      }
-    };
-    reader.readAsDataURL(file);
+    try {
+      const compressed = await compressImageFile(file, 1200, 0.8);
+      onSuccess(compressed);
+    } catch (err) {
+      console.error('Failed to compress image:', err);
+    }
   };
 
-  // Multiple album files upload handler
-  const handleAlbumMultipleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Multiple album files upload handler with auto-compression
+  const handleAlbumMultipleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
     const promises: Promise<string>[] = [];
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      promises.push(
-        new Promise((resolve) => {
-          const reader = new FileReader();
-          reader.onload = (event) => {
-            if (typeof event.target?.result === 'string') {
-              resolve(event.target.result);
-            }
-          };
-          reader.readAsDataURL(file);
-        })
-      );
+      promises.push(compressImageFile(file, 1200, 0.8));
     }
 
-    Promise.all(promises).then((urls) => {
+    try {
+      const urls = await Promise.all(promises);
       const newItems: GalleryItem[] = urls.map((url, i) => ({
         id: `album_${Date.now()}_${i}`,
         url,
@@ -117,7 +107,9 @@ export const EditWeddingModal: React.FC<EditWeddingModalProps> = ({
         ...prev,
         gallery: [...prev.gallery, ...newItems],
       }));
-    });
+    } catch (err) {
+      console.error('Failed to process album photos:', err);
+    }
     e.target.value = '';
   };
 
