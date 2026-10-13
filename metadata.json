@@ -1,0 +1,6 @@
+{
+  "name": "Thiệp Cưới Online - Wedding Invitation",
+  "description": "Nền tảng thiệp cưới trực tuyến sang trọng với chuyển động mượt mà, đếm ngược thời gian thực, bản đồ chỉ đường, gallery ảnh slide, phát nhạc nền lãng mạn, gửi lời chúc mừng tới email và mã QR mừng cưới an toàn.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
