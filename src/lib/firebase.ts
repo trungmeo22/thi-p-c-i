@@ -11,9 +11,10 @@ import {
   updateDoc,
   query,
   orderBy,
+  getDocs,
 } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
-import { WeddingData, GuestRSVP, WeddingWish } from '../types';
+import { WeddingData, GuestRSVP, WeddingWish, GalleryItem } from '../types';
 
 // Initialize Firebase SDK
 export const app = initializeApp(firebaseConfig);
@@ -91,7 +92,7 @@ export async function testConnection(): Promise<boolean> {
 // Run test connection
 testConnection().catch(() => {});
 
-// --- WEDDING DATA SYNC ---
+// --- WEDDING DATA & ALBUM GALLERY SYNC ---
 const WEDDING_DOC_ID = 'main';
 const WEDDING_DOC_PATH = `wedding_data/${WEDDING_DOC_ID}`;
 
@@ -99,16 +100,32 @@ export function subscribeToWeddingData(
   onData: (data: WeddingData) => void,
   onError?: (error: Error) => void
 ) {
+  let cachedMainData: WeddingData | null = null;
+  let cachedGallery: GalleryItem[] | null = null;
+
+  const emitMergedData = () => {
+    if (!cachedMainData) return;
+    const finalData: WeddingData = {
+      ...cachedMainData,
+      // If we have custom gallery items in wedding_gallery collection, use them
+      gallery:
+        cachedGallery && cachedGallery.length > 0
+          ? cachedGallery
+          : cachedMainData.gallery || [],
+    };
+    onData(finalData);
+  };
+
   const weddingDocRef = doc(db, 'wedding_data', WEDDING_DOC_ID);
-  return onSnapshot(
+  const unsubMain = onSnapshot(
     weddingDocRef,
     (snapshot) => {
       if (snapshot.exists()) {
         try {
           const docData = snapshot.data();
           if (docData.weddingDataJson) {
-            const parsed = JSON.parse(docData.weddingDataJson) as WeddingData;
-            onData(parsed);
+            cachedMainData = JSON.parse(docData.weddingDataJson) as WeddingData;
+            emitMergedData();
           }
         } catch (err) {
           console.error('Failed to parse wedding data from Firestore:', err);
@@ -122,13 +139,96 @@ export function subscribeToWeddingData(
       handleFirestoreError(error, OperationType.GET, WEDDING_DOC_PATH);
     }
   );
+
+  const galleryCol = collection(db, 'wedding_gallery');
+  const galleryQuery = query(galleryCol, orderBy('order', 'asc'));
+  const unsubGallery = onSnapshot(
+    galleryQuery,
+    (snapshot) => {
+      if (!snapshot.empty) {
+        const items: GalleryItem[] = [];
+        snapshot.forEach((docSnap) => {
+          const item = docSnap.data();
+          items.push({
+            id: docSnap.id,
+            url: item.url || '',
+            title: item.title || '',
+            caption: item.caption || undefined,
+          });
+        });
+        cachedGallery = items;
+        emitMergedData();
+      }
+    },
+    (error) => {
+      console.warn('Gallery collection sync notice:', error);
+    }
+  );
+
+  return () => {
+    unsubMain();
+    unsubGallery();
+  };
 }
 
 export async function saveWeddingDataToFirestore(data: WeddingData): Promise<void> {
   try {
     const weddingDocRef = doc(db, 'wedding_data', WEDDING_DOC_ID);
+
+    // 1. Sync all gallery photos into wedding_gallery collection
+    if (data.gallery && data.gallery.length > 0) {
+      // Save each photo as its own document in wedding_gallery
+      const saveGalleryPromises = data.gallery.map((photo, index) => {
+        const safePhotoId = (photo.id || `album_${Date.now()}_${index}`).replace(/[^a-zA-Z0-9_-]/g, '_');
+        const photoRef = doc(db, 'wedding_gallery', safePhotoId);
+        return setDoc(photoRef, {
+          url: photo.url,
+          title: photo.title || '',
+          caption: photo.caption || '',
+          order: index,
+          updatedAt: new Date().toISOString(),
+        });
+      });
+
+      await Promise.all(saveGalleryPromises);
+
+      // Clean up any deleted photos from wedding_gallery
+      try {
+        const currentGalleryDocs = await getDocs(collection(db, 'wedding_gallery'));
+        const activeIds = new Set(data.gallery.map((p) => (p.id || '').replace(/[^a-zA-Z0-9_-]/g, '_')));
+        const deletePromises: Promise<void>[] = [];
+        currentGalleryDocs.forEach((docSnap) => {
+          if (!activeIds.has(docSnap.id)) {
+            deletePromises.push(deleteDoc(docSnap.ref));
+          }
+        });
+        if (deletePromises.length > 0) {
+          await Promise.all(deletePromises);
+        }
+      } catch (cleanErr) {
+        console.warn('Could not clean old gallery photos:', cleanErr);
+      }
+    }
+
+    // 2. Save wedding_data/main document
+    // If the full data fits under 700KB, keep it all in wedding_data/main for backward compatibility.
+    // If oversized due to images, save lightweight gallery references in main document.
+    let dataToSaveInMain = data;
+    const jsonString = JSON.stringify(data);
+    if (jsonString.length > 700 * 1024) {
+      dataToSaveInMain = {
+        ...data,
+        gallery: data.gallery.map((p) => ({
+          id: p.id,
+          url: p.url.startsWith('data:') ? '' : p.url, // Full image is already saved in wedding_gallery
+          title: p.title,
+          caption: p.caption,
+        })),
+      };
+    }
+
     await setDoc(weddingDocRef, {
-      weddingDataJson: JSON.stringify(data),
+      weddingDataJson: JSON.stringify(dataToSaveInMain),
       updatedAt: new Date().toISOString(),
       updatedBy: auth.currentUser?.email || 'admin',
     });

@@ -251,12 +251,23 @@ export default function App() {
     setIsGuestModalOpen(true);
   };
 
-  // Sync weddingData to localStorage
+  // Sync weddingData to localStorage with quota-safe fallback
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEYS.DATA, JSON.stringify(weddingData));
     } catch {
-      // storage quota or disabled
+      try {
+        const lightweight = {
+          ...weddingData,
+          gallery: weddingData.gallery.map((g) => ({
+            ...g,
+            url: g.url.startsWith('data:') ? '' : g.url,
+          })),
+        };
+        localStorage.setItem(STORAGE_KEYS.DATA, JSON.stringify(lightweight));
+      } catch {
+        // quota full or private browsing
+      }
     }
   }, [weddingData]);
 
@@ -353,18 +364,18 @@ export default function App() {
   };
 
   // Customizer Handlers
-  const handleSaveWeddingData = (updated: WeddingData) => {
+  const handleSaveWeddingData = async (updated: WeddingData) => {
     setWeddingData(updated);
-    saveWeddingDataToFirestore(updated)
-      .then(() => {
-        setSaveToast('Đã lưu thành công lên Firebase Firestore! Toàn bộ khách mời sẽ thấy dữ liệu cập nhật mới.');
-        setTimeout(() => setSaveToast(null), 4000);
-      })
-      .catch((err) => {
-        console.error('Failed to save wedding data to Firestore:', err);
-        setSaveToast('Lưu nội bộ thành công. Đang đồng bộ lại với Firebase...');
-        setTimeout(() => setSaveToast(null), 3000);
-      });
+    try {
+      await saveWeddingDataToFirestore(updated);
+      setSaveToast('Đã lưu thành công lên Firebase Firestore! Toàn bộ khách mời sẽ thấy dữ liệu cập nhật mới.');
+      setTimeout(() => setSaveToast(null), 4000);
+    } catch (err) {
+      console.error('Failed to save wedding data to Firestore:', err);
+      setSaveToast('Lỗi khi lưu lên Firebase: ' + (err instanceof Error ? err.message : String(err)));
+      setTimeout(() => setSaveToast(null), 5000);
+      throw err;
+    }
   };
 
   const handleResetWeddingData = () => {

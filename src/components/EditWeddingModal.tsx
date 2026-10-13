@@ -25,6 +25,8 @@ import {
   Clock,
   Pencil,
   Lock,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react';
 import { WeddingData, GalleryItem, WeddingEvent } from '../types';
 import { POPULAR_BANKS, INITIAL_WEDDING_DATA } from '../data/defaultWeddingData';
@@ -34,7 +36,7 @@ interface EditWeddingModalProps {
   isOpen: boolean;
   onClose: () => void;
   data: WeddingData;
-  onSave: (updatedData: WeddingData) => void;
+  onSave: (updatedData: WeddingData) => void | Promise<void>;
   onReset: () => void;
   initialTab?: 'couple' | 'gallery' | 'banks' | 'datetime' | 'venues' | 'photos';
 }
@@ -52,10 +54,14 @@ export const EditWeddingModal: React.FC<EditWeddingModalProps> = ({
     'couple' | 'gallery' | 'banks' | 'datetime' | 'venues' | 'photos'
   >(initialTab || 'couple');
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [isCompressingPhotos, setIsCompressingPhotos] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
       setFormData(data);
+      setSaveError(null);
       if (initialTab) {
         setActiveTab(initialTab);
       }
@@ -77,7 +83,7 @@ export const EditWeddingModal: React.FC<EditWeddingModalProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const compressed = await compressImageFile(file, 1200, 0.8);
+      const compressed = await compressImageFile(file, 800, 0.75);
       onSuccess(compressed);
     } catch (err) {
       console.error('Failed to compress image:', err);
@@ -88,29 +94,35 @@ export const EditWeddingModal: React.FC<EditWeddingModalProps> = ({
   const handleAlbumMultipleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
+    setIsCompressingPhotos(true);
     const promises: Promise<string>[] = [];
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      promises.push(compressImageFile(file, 1200, 0.8));
+      promises.push(compressImageFile(file, 1000, 0.72));
     }
 
     try {
       const urls = await Promise.all(promises);
-      const newItems: GalleryItem[] = urls.map((url, i) => ({
-        id: `album_${Date.now()}_${i}`,
-        url,
-        title: `Khoảnh khắc đẹp ${formData.gallery.length + i + 1}`,
-        caption: 'Hạnh phúc ngày chung đôi',
-      }));
+      const newItems: GalleryItem[] = urls
+        .filter((u) => Boolean(u))
+        .map((url, i) => ({
+          id: `album_${Date.now()}_${i}`,
+          url,
+          title: `Khoảnh khắc đẹp ${formData.gallery.length + i + 1}`,
+          caption: 'Hạnh phúc ngày chung đôi',
+        }));
       setFormData((prev) => ({
         ...prev,
         gallery: [...prev.gallery, ...newItems],
       }));
     } catch (err) {
       console.error('Failed to process album photos:', err);
+      alert('Có lỗi khi xử lý một số tệp ảnh. Vui lòng thử lại!');
+    } finally {
+      setIsCompressingPhotos(false);
+      e.target.value = '';
     }
-    e.target.value = '';
   };
 
   const handleAddPhotoByUrl = () => {
@@ -275,14 +287,23 @@ export const EditWeddingModal: React.FC<EditWeddingModalProps> = ({
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(formData);
-    setSaveSuccess(true);
-    setTimeout(() => {
-      setSaveSuccess(false);
-      onClose();
-    }, 800);
+    setIsSaving(true);
+    setSaveError(null);
+    try {
+      await onSave(formData);
+      setSaveSuccess(true);
+      setTimeout(() => {
+        setSaveSuccess(false);
+        onClose();
+      }, 1000);
+    } catch (err) {
+      console.error('Failed to save wedding data:', err);
+      setSaveError(err instanceof Error ? err.message : 'Lỗi khi lưu dữ liệu lên Firebase');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -1272,16 +1293,30 @@ export const EditWeddingModal: React.FC<EditWeddingModalProps> = ({
                   <p className="text-xs text-stone-500 mt-0.5">
                     Hỗ trợ tệp PNG, JPG, JPEG, WEBP. Bạn có thể chọn cùng lúc nhiều ảnh từ máy tính hoặc điện thoại.
                   </p>
-                  <label className="cursor-pointer inline-flex items-center gap-2 px-5 py-2.5 mt-3 rounded-xl bg-[#a06a3e] hover:bg-[#88572f] text-white text-xs font-semibold shadow-md transition-all">
-                    <Upload className="w-4 h-4" />
-                    <span>Chọn tệp ảnh từ máy tính / điện thoại</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      className="hidden"
-                      onChange={handleAlbumMultipleUpload}
-                    />
+                  <label className={`inline-flex items-center gap-2 px-5 py-2.5 mt-3 rounded-xl text-white text-xs font-semibold shadow-md transition-all ${
+                    isCompressingPhotos
+                      ? 'bg-stone-400 cursor-not-allowed'
+                      : 'bg-[#a06a3e] hover:bg-[#88572f] cursor-pointer'
+                  }`}>
+                    {isCompressingPhotos ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Đang tối ưu hóa các tệp ảnh...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-4 h-4" />
+                        <span>Chọn tệp ảnh từ máy tính / điện thoại</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          className="hidden"
+                          onChange={handleAlbumMultipleUpload}
+                          disabled={isCompressingPhotos}
+                        />
+                      </>
+                    )}
                   </label>
                 </div>
 
@@ -1883,30 +1918,51 @@ export const EditWeddingModal: React.FC<EditWeddingModalProps> = ({
           )}
 
           {/* Footer Save Actions */}
-          <div className="pt-4 border-t border-stone-200 flex items-center justify-between">
-            {saveSuccess ? (
-              <span className="text-emerald-700 font-semibold text-xs">
-                ✓ Đã lưu thay đổi thành công!
-              </span>
-            ) : (
-              <span className="text-stone-400 text-xs">
-                Mọi thông tin sẽ được cập nhật trực tiếp trên landing page.
-              </span>
-            )}
-            <div className="flex items-center gap-2">
+          <div className="pt-4 border-t border-stone-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div>
+              {saveSuccess && (
+                <span className="text-emerald-700 font-semibold text-xs flex items-center gap-1.5 animate-in fade-in">
+                  <Check className="w-4 h-4 text-emerald-600" />
+                  <span>Đã lưu thành công lên đám mây Firebase! Tất cả thiết bị đã cập nhật.</span>
+                </span>
+              )}
+              {saveError && (
+                <span className="text-rose-600 font-semibold text-xs flex items-center gap-1.5 animate-in fade-in">
+                  <AlertCircle className="w-4 h-4 text-rose-600" />
+                  <span>{saveError}</span>
+                </span>
+              )}
+              {!saveSuccess && !saveError && (
+                <span className="text-stone-400 text-xs">
+                  Mọi thông tin & ảnh cưới sẽ tự động đồng bộ tức thì trên mọi thiết bị.
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2 self-end sm:self-auto">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 rounded-xl border border-stone-300 text-stone-700 hover:bg-stone-100 text-xs font-medium"
+                disabled={isSaving}
+                className="px-4 py-2 rounded-xl border border-stone-300 text-stone-700 hover:bg-stone-100 disabled:opacity-50 text-xs font-medium"
               >
                 Đóng
               </button>
               <button
                 type="submit"
-                className="px-5 py-2 rounded-xl bg-[#a06a3e] hover:bg-[#8b5a33] text-white text-xs font-semibold shadow-md flex items-center gap-1.5"
+                disabled={isSaving || isCompressingPhotos}
+                className="px-5 py-2 rounded-xl bg-[#a06a3e] hover:bg-[#8b5a33] disabled:bg-stone-400 text-white text-xs font-semibold shadow-md flex items-center gap-1.5 transition-all"
               >
-                <Save className="w-4 h-4" />
-                <span>Lưu Cập Nhật</span>
+                {isSaving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Đang lưu lên đám mây...</span>
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4" />
+                    <span>Lưu Cập Nhật</span>
+                  </>
+                )}
               </button>
             </div>
           </div>

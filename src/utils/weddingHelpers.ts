@@ -76,12 +76,16 @@ export function formatTimeRemaining(targetIsoDate: string) {
   return { days, hours, minutes, seconds, isPassed: false };
 }
 
-export async function compressImageFile(file: File, maxDimension: number = 1200, quality: number = 0.8): Promise<string> {
+export async function compressImageFile(
+  file: File,
+  maxDimension: number = 1000,
+  quality: number = 0.72
+): Promise<string> {
   return new Promise((resolve, reject) => {
     // If it is SVG, don't canvas compress
     if (file.type === 'image/svg+xml') {
       const reader = new FileReader();
-      reader.onload = (e) => resolve(e.target?.result as string);
+      reader.onload = (e) => resolve((e.target?.result as string) || '');
       reader.onerror = reject;
       reader.readAsDataURL(file);
       return;
@@ -89,38 +93,66 @@ export async function compressImageFile(file: File, maxDimension: number = 1200,
 
     const reader = new FileReader();
     reader.onload = (e) => {
+      const dataUrl = e.target?.result as string;
+      if (!dataUrl) {
+        resolve('');
+        return;
+      }
+
       const img = new Image();
       img.onload = () => {
         let { width, height } = img;
+
         if (width > maxDimension || height > maxDimension) {
-          if (width > height) {
+          if (width >= height) {
             height = Math.round((height * maxDimension) / width);
             width = maxDimension;
           } else {
             width = Math.round((width * maxDimension) / height);
-            maxDimension = height;
-            width = Math.round((img.width * maxDimension) / img.height);
+            height = maxDimension;
           }
         }
 
         const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
+        canvas.width = Math.max(1, width);
+        canvas.height = Math.max(1, height);
         const ctx = canvas.getContext('2d');
         if (!ctx) {
-          resolve(e.target?.result as string);
+          resolve(dataUrl);
           return;
         }
 
+        // Draw image with smoothing
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(img, 0, 0, width, height);
+
         // Convert to web-optimized JPEG
-        const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+        let compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+
+        // If still > 350KB, downscale one more step to ensure fast cloud syncing
+        if (compressedDataUrl.length > 350 * 1024) {
+          const secondCanvas = document.createElement('canvas');
+          const targetW = Math.round(width * 0.75);
+          const targetH = Math.round(height * 0.75);
+          secondCanvas.width = targetW;
+          secondCanvas.height = targetH;
+          const ctx2 = secondCanvas.getContext('2d');
+          if (ctx2) {
+            ctx2.imageSmoothingEnabled = true;
+            ctx2.imageSmoothingQuality = 'medium';
+            ctx2.drawImage(canvas, 0, 0, targetW, targetH);
+            compressedDataUrl = secondCanvas.toDataURL('image/jpeg', 0.65);
+          }
+        }
+
         resolve(compressedDataUrl);
       };
+
       img.onerror = () => {
-        resolve(e.target?.result as string);
+        resolve(dataUrl);
       };
-      img.src = e.target?.result as string;
+      img.src = dataUrl;
     };
     reader.onerror = reject;
     reader.readAsDataURL(file);

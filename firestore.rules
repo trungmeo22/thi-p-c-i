@@ -71,5 +71,10 @@ service cloud.firestore {
       allow create, update: if isValidId(docId) && isValidWeddingContent(request.resource.data);
       allow delete: if isAdmin();
     }
+
+    match /wedding_gallery/{photoId} {
+      allow read: if true;
+      allow create, update, delete: if isValidId(photoId);
+    }
   }
 }
