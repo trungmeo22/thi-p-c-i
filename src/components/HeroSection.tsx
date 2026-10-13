@@ -5,10 +5,15 @@ import { WeddingData } from '../types';
 
 interface HeroSectionProps {
   weddingData: WeddingData;
-  onOpenEditModal: () => void;
+  onOpenEditModal?: () => void;
+  guestName?: string;
 }
 
-export const HeroSection: React.FC<HeroSectionProps> = ({ weddingData, onOpenEditModal }) => {
+export const HeroSection: React.FC<HeroSectionProps> = ({
+  weddingData,
+  onOpenEditModal,
+  guestName,
+}) => {
   return (
     <section
       id="top"
@@ -35,6 +40,24 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ weddingData, onOpenEdi
 
       {/* Main Hero Content */}
       <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 py-24 flex flex-col items-center text-white">
+        {/* Personalized Guest Badge (If link was sent with ?to=Name or ?guest=Name) */}
+        {guestName && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.8, delay: 0.15 }}
+            className="mb-4 inline-flex items-center gap-2.5 px-5 py-2 rounded-2xl bg-gradient-to-r from-stone-900/80 via-amber-950/80 to-stone-900/80 backdrop-blur-md border border-amber-300/40 text-[#fbf5eb] shadow-xl"
+          >
+            <Heart className="w-3.5 h-3.5 text-rose-400 fill-rose-400" />
+            <span className="text-xs sm:text-sm font-medium tracking-wide">
+              Trân trọng kính mời:{' '}
+              <span className="font-bold text-amber-200 underline decoration-amber-400/60 decoration-1 underline-offset-4">
+                {guestName}
+              </span>
+            </span>
+          </motion.div>
+        )}
+
         {/* Tagline / Invitation banner */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}

@@ -1,25 +1,40 @@
 import React, { useState } from 'react';
-import { Heart, Share2, Check, ArrowUp } from 'lucide-react';
+import { Heart, Share2, Check, ArrowUp, Lock } from 'lucide-react';
 import { WeddingData } from '../types';
 
 interface FooterProps {
   weddingData: WeddingData;
+  onOpenAuthModal?: () => void;
+  onOpenShareModal?: () => void;
 }
 
-export const Footer: React.FC<FooterProps> = ({ weddingData }) => {
+export const Footer: React.FC<FooterProps> = ({
+  weddingData,
+  onOpenAuthModal,
+  onOpenShareModal,
+}) => {
   const [copied, setCopied] = useState(false);
 
+  const cleanGuestUrl = typeof window !== 'undefined'
+    ? `${window.location.origin}${window.location.pathname}`.replace(/\/$/, '')
+    : '';
+
   const handleShare = () => {
+    if (onOpenShareModal) {
+      onOpenShareModal();
+      return;
+    }
+
     if (navigator.share) {
       navigator
         .share({
           title: `Thiệp Cưới Online: ${weddingData.groom.name} & ${weddingData.bride.name}`,
           text: `Trân trọng kính mời bạn đến dự đám cưới của ${weddingData.groom.fullName} & ${weddingData.bride.fullName}!`,
-          url: window.location.href,
+          url: cleanGuestUrl,
         })
         .catch(() => {});
     } else {
-      navigator.clipboard.writeText(window.location.href);
+      navigator.clipboard.writeText(cleanGuestUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
     }
@@ -83,6 +98,20 @@ export const Footer: React.FC<FooterProps> = ({ weddingData }) => {
           >
             <ArrowUp className="w-4 h-4" />
           </button>
+        </div>
+
+        {/* Discreet Host trigger in footer for couple */}
+        <div className="pt-8 text-[11px] text-stone-500 flex items-center justify-center gap-2">
+          <span>Hạnh phúc đong đầy • Yêu thương gắn kết</span>
+          {onOpenAuthModal && (
+            <button
+              onClick={onOpenAuthModal}
+              className="opacity-25 hover:opacity-100 p-1 rounded text-stone-400 hover:text-amber-300 transition-all"
+              title="Đăng nhập Chủ Tiệc (Dâu & Rể)"
+            >
+              <Lock className="w-3 h-3" />
+            </button>
+          )}
         </div>
       </div>
     </footer>

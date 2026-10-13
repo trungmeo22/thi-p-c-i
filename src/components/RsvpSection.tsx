@@ -6,11 +6,12 @@ import { GuestRSVP } from '../types';
 
 interface RsvpSectionProps {
   onAddGuest: (guest: GuestRSVP) => void;
+  guestName?: string;
 }
 
-export const RsvpSection: React.FC<RsvpSectionProps> = ({ onAddGuest }) => {
+export const RsvpSection: React.FC<RsvpSectionProps> = ({ onAddGuest, guestName }) => {
   const [formData, setFormData] = useState({
-    name: '',
+    name: guestName || '',
     phone: '',
     email: '',
     guestSide: 'groom' as 'groom' | 'bride' | 'both',

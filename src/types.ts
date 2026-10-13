@@ -70,6 +70,7 @@ export interface WeddingData {
     bride: BankAccount;
   };
   adminEmail: string;
+  adminPin?: string;
   audioTrack: AudioTrack;
 }
 

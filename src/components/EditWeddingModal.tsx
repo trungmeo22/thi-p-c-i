@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   X,
   Upload,
@@ -22,8 +22,11 @@ import {
   Navigation,
   ExternalLink,
   Compass,
+  Clock,
+  Pencil,
+  Lock,
 } from 'lucide-react';
-import { WeddingData, GalleryItem } from '../types';
+import { WeddingData, GalleryItem, WeddingEvent } from '../types';
 import { POPULAR_BANKS, INITIAL_WEDDING_DATA } from '../data/defaultWeddingData';
 import { getVietQrUrl } from '../utils/weddingHelpers';
 
@@ -33,6 +36,7 @@ interface EditWeddingModalProps {
   data: WeddingData;
   onSave: (updatedData: WeddingData) => void;
   onReset: () => void;
+  initialTab?: 'couple' | 'gallery' | 'banks' | 'datetime' | 'venues' | 'photos';
 }
 
 export const EditWeddingModal: React.FC<EditWeddingModalProps> = ({
@@ -41,12 +45,22 @@ export const EditWeddingModal: React.FC<EditWeddingModalProps> = ({
   data,
   onSave,
   onReset,
+  initialTab,
 }) => {
   const [formData, setFormData] = useState<WeddingData>(data);
   const [activeTab, setActiveTab] = useState<
     'couple' | 'gallery' | 'banks' | 'datetime' | 'venues' | 'photos'
-  >('couple');
+  >(initialTab || 'couple');
   const [saveSuccess, setSaveSuccess] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setFormData(data);
+      if (initialTab) {
+        setActiveTab(initialTab);
+      }
+    }
+  }, [isOpen, data, initialTab]);
 
   // New photo input state
   const [newPhotoUrl, setNewPhotoUrl] = useState('');
@@ -182,6 +196,93 @@ export const EditWeddingModal: React.FC<EditWeddingModalProps> = ({
     setFormData({ ...formData, events: updated });
   };
 
+  const formatDateToDisplay = (isoDate: string): string => {
+    if (!isoDate) return '';
+    const parts = isoDate.split('-');
+    if (parts.length === 3) {
+      const [year, month, day] = parts;
+      return `${day} / ${month} / ${year}`;
+    }
+    return isoDate;
+  };
+
+  const parseDisplayDateToIso = (text: string): string => {
+    if (!text) return '';
+    const match = text.match(/(\d{1,2})\s*[/.-]\s*(\d{1,2})\s*[/.-]\s*(\d{4})/);
+    if (match) {
+      const day = match[1].padStart(2, '0');
+      const month = match[2].padStart(2, '0');
+      const year = match[3];
+      return `${year}-${month}-${day}`;
+    }
+    const matchIso = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (matchIso) {
+      return text;
+    }
+    return '';
+  };
+
+  const handleUpdateEventField = (
+    index: number,
+    field: keyof WeddingEvent,
+    value: any
+  ) => {
+    const updated = [...formData.events];
+    updated[index] = {
+      ...updated[index],
+      [field]: value,
+    };
+    setFormData((prev) => ({
+      ...prev,
+      events: updated,
+    }));
+  };
+
+  const handleAddEvent = () => {
+    const newEvent: WeddingEvent = {
+      id: `ceremony_${Date.now()}`,
+      title: 'Tiệc Cưới Mừng (Nhà Hàng)',
+      side: 'both',
+      time: '18:00 PM',
+      dateText: formData.weddingDateFormatted || '28 / 11 / 2026',
+      venueName: 'Trung Tâm Hội Nghị Tiệc Cưới',
+      address: 'TP. Hồ Chí Minh',
+      mapQuery: 'TP. Hồ Chí Minh',
+      mapEmbedUrl: '',
+    };
+    setFormData((prev) => ({
+      ...prev,
+      events: [...prev.events, newEvent],
+    }));
+  };
+
+  const handleDeleteEvent = (index: number) => {
+    if (formData.events.length <= 1) {
+      alert('Phải giữ lại ít nhất 1 sự kiện / buổi lễ trong lịch trình!');
+      return;
+    }
+    const event = formData.events[index];
+    if (window.confirm(`Bạn có chắc chắn muốn xóa "${event.title}" khỏi lịch trình?`)) {
+      setFormData((prev) => ({
+        ...prev,
+        events: prev.events.filter((_, idx) => idx !== index),
+      }));
+    }
+  };
+
+  const handleMoveEvent = (index: number, direction: 'up' | 'down') => {
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= formData.events.length) return;
+    const newEvents = [...formData.events];
+    const temp = newEvents[index];
+    newEvents[index] = newEvents[targetIndex];
+    newEvents[targetIndex] = temp;
+    setFormData((prev) => ({
+      ...prev,
+      events: newEvents,
+    }));
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSave(formData);
@@ -238,10 +339,10 @@ export const EditWeddingModal: React.FC<EditWeddingModalProps> = ({
         <div className="flex border-b border-stone-200 bg-stone-50 px-4 sm:px-6 overflow-x-auto">
           {[
             { id: 'couple', label: 'Cô Dâu & Chú Rể', icon: Heart },
+            { id: 'venues', label: 'Lịch Trình & Địa Điểm', icon: MapPin },
+            { id: 'datetime', label: 'Ngày Giờ & Đếm Ngược', icon: Calendar },
             { id: 'gallery', label: 'Album Ảnh Cưới', icon: Images },
             { id: 'banks', label: 'Tài Khoản & Ảnh QR', icon: CreditCard },
-            { id: 'datetime', label: 'Ngày Giờ & Đếm Ngược', icon: Calendar },
-            { id: 'venues', label: 'Địa Điểm & Bản Đồ', icon: MapPin },
             { id: 'photos', label: 'Ảnh Bìa & Nhạc Nền', icon: ImageIcon },
           ].map((tab) => {
             const Icon = tab.icon;
@@ -509,76 +610,212 @@ export const EditWeddingModal: React.FC<EditWeddingModalProps> = ({
                     </div>
                   </div>
                 </div>
+
+                {/* Admin PIN & Security Settings */}
+                <div className="pt-4 border-t border-stone-200 mt-5">
+                  <div className="flex items-center gap-2 mb-1.5 text-stone-800 font-semibold text-xs">
+                    <Lock className="w-4 h-4 text-[#9b663b]" />
+                    <span>Mã PIN Bảo Vệ Tùy Biến (Dành cho Cô Dâu & Chú Rể)</span>
+                  </div>
+                  <p className="text-[11px] text-stone-500 mb-2 leading-relaxed">
+                    Mã PIN bảo mật giúp ngăn chặn khách mời vô tình hoặc tự ý sửa thông tin thiệp cưới của bạn. Mặc định là 2811.
+                  </p>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="text"
+                      maxLength={10}
+                      placeholder="Mã PIN (VD: 2811)"
+                      value={formData.adminPin || '2811'}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          adminPin: e.target.value.trim(),
+                        })
+                      }
+                      className="w-36 px-3 py-2 rounded-xl bg-white border border-stone-300 font-mono text-center font-bold tracking-widest text-[#9b663b] focus:outline-none focus:ring-2 focus:ring-[#9b663b]/30"
+                    />
+                    <span className="text-[11px] text-stone-400">
+                      Mặc định: <strong className="text-stone-600">2811</strong> (hoặc đặt ngày kỷ niệm tùy thích)
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
           )}
 
           {/* TAB: DATETIME & COUNTDOWN */}
           {activeTab === 'datetime' && (
-            <div className="space-y-4">
-              <div>
-                <label className="block text-[11px] font-semibold text-stone-700 mb-1">
-                  Mốc thời gian kích hoạt đếm ngược (ISO Format / Thời gian chính thức) *
-                </label>
-                <input
-                  type="datetime-local"
-                  required
-                  value={formData.targetDateTime.slice(0, 16)}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      targetDateTime: `${e.target.value}:00`,
-                    })
-                  }
-                  className="w-full px-3 py-2 rounded-xl bg-stone-50 border border-stone-300 focus:outline-none"
-                />
-                <p className="text-[10px] text-stone-400 mt-1">
-                  Đồng hồ đếm ngược trên landing page sẽ tự động đếm từng giây đến thời điểm này.
-                </p>
+            <div className="space-y-6">
+              <div className="p-4 rounded-2xl bg-[#faf5ee] border border-[#eedecf] flex items-start gap-3">
+                <div className="p-2 rounded-xl bg-white text-[#9b683e] shadow-sm shrink-0 mt-0.5">
+                  <Calendar className="w-4 h-4 text-[#9b683e]" />
+                </div>
+                <div className="text-xs text-stone-600 space-y-1">
+                  <h4 className="font-semibold text-stone-800 text-sm">
+                    Thời Gian Hôn Lễ & Đồng Hồ Đếm Ngược
+                  </h4>
+                  <p className="font-light leading-relaxed">
+                    Cài đặt mốc đếm ngược trên đầu trang và tùy chỉnh ngày giờ cử hành chi tiết cho từng buổi lễ (Lễ Thành Hôn, Lễ Vu Quy).
+                  </p>
+                </div>
               </div>
 
-              <div>
-                <label className="block text-[11px] font-semibold text-stone-700 mb-1">
-                  Dòng chữ ngày cưới hiển thị trên thiệp
-                </label>
-                <input
-                  type="text"
-                  value={formData.weddingDateFormatted}
-                  onChange={(e) =>
-                    setFormData({ ...formData, weddingDateFormatted: e.target.value })
-                  }
-                  placeholder="VD: Thứ Bảy, 28 Tháng 11, 2026"
-                  className="w-full px-3 py-2 rounded-xl bg-stone-50 border border-stone-300 focus:outline-none"
-                />
+              <div className="space-y-4 bg-white p-4 sm:p-5 rounded-2xl border border-stone-200">
+                <div>
+                  <label className="block text-[11px] font-semibold text-stone-700 mb-1">
+                    Mốc thời gian kích hoạt đếm ngược (ISO Format / Thời gian chính thức) *
+                  </label>
+                  <input
+                    type="datetime-local"
+                    required
+                    value={formData.targetDateTime.slice(0, 16)}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        targetDateTime: `${e.target.value}:00`,
+                      })
+                    }
+                    className="w-full px-3 py-2 rounded-xl bg-stone-50 border border-stone-300 focus:outline-none focus:bg-white text-xs sm:text-sm font-medium text-stone-800"
+                  />
+                  <p className="text-[10px] text-stone-400 mt-1">
+                    Đồng hồ đếm ngược trên landing page sẽ tự động đếm từng giây đến thời điểm này.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-stone-700 mb-1">
+                      Dòng chữ ngày cưới hiển thị trên thiệp
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.weddingDateFormatted}
+                      onChange={(e) =>
+                        setFormData({ ...formData, weddingDateFormatted: e.target.value })
+                      }
+                      placeholder="VD: Thứ Bảy, 28 Tháng 11, 2026"
+                      className="w-full px-3 py-2 rounded-xl bg-stone-50 border border-stone-300 focus:outline-none focus:bg-white text-xs"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-stone-700 mb-1">
+                      Ngày Âm Lịch
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.lunarDateFormatted}
+                      onChange={(e) =>
+                        setFormData({ ...formData, lunarDateFormatted: e.target.value })
+                      }
+                      placeholder="VD: Tức ngày 20 tháng 10 năm Bính Ngọ"
+                      className="w-full px-3 py-2 rounded-xl bg-stone-50 border border-stone-300 focus:outline-none focus:bg-white text-xs"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-stone-700 mb-1">
+                    Lời trích dẫn / Châm ngôn tình yêu (Quote)
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={formData.heroQuote}
+                    onChange={(e) =>
+                      setFormData({ ...formData, heroQuote: e.target.value })
+                    }
+                    className="w-full px-3 py-2 rounded-xl bg-stone-50 border border-stone-300 focus:outline-none focus:bg-white text-xs"
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="block text-[11px] font-semibold text-stone-700 mb-1">
-                  Ngày Âm Lịch
-                </label>
-                <input
-                  type="text"
-                  value={formData.lunarDateFormatted}
-                  onChange={(e) =>
-                    setFormData({ ...formData, lunarDateFormatted: e.target.value })
-                  }
-                  placeholder="VD: Tức ngày 20 tháng 10 năm Bính Ngọ"
-                  className="w-full px-3 py-2 rounded-xl bg-stone-50 border border-stone-300 focus:outline-none"
-                />
-              </div>
+              {/* Lịch trình các buổi lễ (Nhà Trai & Nhà Gái) */}
+              <div className="p-4 sm:p-5 rounded-2xl bg-[#fcfaf7] border border-[#e8ded2] space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-[#eee2d3]">
+                  <div>
+                    <h4 className="font-semibold text-stone-800 text-sm flex items-center gap-1.5">
+                      <Clock className="w-4 h-4 text-[#9b683e]" />
+                      <span>Ngày Giờ Các Buổi Lễ Trong Lịch Trình (Nhà Trai, Nhà Gái)</span>
+                    </h4>
+                    <p className="text-[11px] text-stone-500">
+                      Chỉnh sửa trực tiếp ngày & giờ cử hành cho từng bên
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('venues')}
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-[#9b683e] hover:text-[#7f4f26] self-start sm:self-auto bg-white px-2.5 py-1 rounded-lg border border-[#e2d0bf] shadow-xs hover:shadow transition-all"
+                  >
+                    <span>Chỉnh chi tiết địa điểm & bản đồ</span>
+                    <span>→</span>
+                  </button>
+                </div>
 
-              <div>
-                <label className="block text-[11px] font-semibold text-stone-700 mb-1">
-                  Lời trích dẫn / Châm ngôn tình yêu (Quote)
-                </label>
-                <textarea
-                  rows={2}
-                  value={formData.heroQuote}
-                  onChange={(e) =>
-                    setFormData({ ...formData, heroQuote: e.target.value })
-                  }
-                  className="w-full px-3 py-2 rounded-xl bg-stone-50 border border-stone-300 focus:outline-none"
-                />
+                <div className="space-y-3 pt-1">
+                  {formData.events.map((event, idx) => (
+                    <div
+                      key={event.id}
+                      className="p-3.5 rounded-xl bg-white border border-stone-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span
+                            className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                              event.side === 'groom'
+                                ? 'bg-blue-50 text-blue-700'
+                                : event.side === 'bride'
+                                ? 'bg-rose-50 text-rose-700'
+                                : 'bg-amber-50 text-amber-800'
+                            }`}
+                          >
+                            {event.side === 'groom'
+                              ? 'Nhà Trai'
+                              : event.side === 'bride'
+                              ? 'Nhà Gái'
+                              : 'Lễ Cưới'}
+                          </span>
+                          <span className="font-semibold text-stone-800 text-xs truncate">
+                            {event.title}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-stone-500 truncate">
+                          {event.venueName} • {event.address}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <div>
+                          <label className="block text-[10px] font-medium text-stone-600 mb-0.5">
+                            Ngày tổ chức
+                          </label>
+                          <input
+                            type="text"
+                            value={event.dateText || ''}
+                            onChange={(e) =>
+                              handleUpdateEventField(idx, 'dateText', e.target.value)
+                            }
+                            placeholder="28 / 11 / 2026"
+                            className="px-2.5 py-1.5 text-xs rounded-lg border border-stone-300 w-32 bg-stone-50 focus:bg-white focus:outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-medium text-stone-600 mb-0.5">
+                            Giờ cử hành
+                          </label>
+                          <input
+                            type="text"
+                            value={event.time || ''}
+                            onChange={(e) =>
+                              handleUpdateEventField(idx, 'time', e.target.value)
+                            }
+                            placeholder="09:00 AM"
+                            className="px-2.5 py-1.5 text-xs rounded-lg border border-stone-300 w-24 bg-stone-50 focus:bg-white focus:outline-none"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           )}
@@ -586,19 +823,30 @@ export const EditWeddingModal: React.FC<EditWeddingModalProps> = ({
           {/* TAB: VENUES & MAP */}
           {activeTab === 'venues' && (
             <div className="space-y-6">
-              {/* Guidance card */}
-              <div className="p-4 rounded-2xl bg-[#faf5ee] border border-[#eedecf] flex items-start gap-3">
-                <div className="p-2 rounded-xl bg-white text-[#9b683e] shadow-sm shrink-0 mt-0.5">
-                  <MapPin className="w-4 h-4 text-rose-500" />
+              {/* Guidance & Header */}
+              <div className="p-4 rounded-2xl bg-[#faf5ee] border border-[#eedecf] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 rounded-xl bg-white text-[#9b683e] shadow-sm shrink-0 mt-0.5">
+                    <MapPin className="w-4 h-4 text-rose-500" />
+                  </div>
+                  <div className="text-xs text-stone-600 space-y-1">
+                    <h4 className="font-semibold text-stone-800 text-sm">
+                      Lịch Trình Hôn Lễ, Ngày Giờ & Bản Đồ (Nhà Trai, Nhà Gái)
+                    </h4>
+                    <p className="font-light leading-relaxed">
+                      Chỉnh sửa ngày giờ cử hành <strong>Lễ Thành Hôn</strong>, <strong>Lễ Vu Quy</strong>, bên tổ chức gia đình, địa chỉ và tọa độ dẫn đường Google Maps.
+                    </p>
+                  </div>
                 </div>
-                <div className="text-xs text-stone-600 space-y-1">
-                  <h4 className="font-semibold text-stone-800 text-sm">
-                    Định Vị & Chỉnh Chính Xác Vị Trí Bản Đồ
-                  </h4>
-                  <p className="font-light leading-relaxed">
-                    Bạn có thể điền địa chỉ, nhập <strong>tọa độ GPS chính xác</strong> (ví dụ: <code className="bg-white px-1.5 py-0.5 rounded border border-stone-300 text-stone-800">10.778786, 106.698345</code>), hoặc dán link nhúng Google Maps iframe. Hệ thống sẽ tự động ghim đúng vị trí trên bản đồ thiệp cưới để khách mời dễ dàng chỉ đường.
-                  </p>
-                </div>
+
+                <button
+                  type="button"
+                  onClick={handleAddEvent}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#9e673a] hover:bg-[#83522b] text-white text-xs font-semibold shadow-sm transition-all shrink-0 self-start sm:self-auto"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Thêm buổi lễ mới</span>
+                </button>
               </div>
 
               {formData.events.map((event, idx) => {
@@ -609,11 +857,14 @@ export const EditWeddingModal: React.FC<EditWeddingModalProps> = ({
                         event.mapQuery || event.address || event.venueName
                       )}&t=&z=16&ie=UTF8&iwloc=&output=embed`;
 
+                const isoDateVal = parseDisplayDateToIso(event.dateText || '');
+
                 return (
                   <div
                     key={event.id}
                     className="p-5 rounded-2xl bg-white border border-stone-200 shadow-sm space-y-4"
                   >
+                    {/* Event Card Header */}
                     <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-stone-100">
                       <div className="flex items-center gap-2">
                         <span className="w-6 h-6 rounded-full bg-[#f4ece3] text-[#915e34] font-bold text-xs flex items-center justify-center">
@@ -623,51 +874,238 @@ export const EditWeddingModal: React.FC<EditWeddingModalProps> = ({
                           {event.title}
                         </h4>
                       </div>
+
                       <div className="flex items-center gap-1.5">
-                        <span className="text-[10px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-full bg-stone-100 text-stone-700">
-                          {event.side === 'groom'
-                            ? 'Nhà Trai'
-                            : event.side === 'bride'
-                            ? 'Nhà Gái'
-                            : 'Lễ Cưới'}
-                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleMoveEvent(idx, 'up')}
+                          disabled={idx === 0}
+                          className="p-1.5 rounded-lg border border-stone-200 text-stone-500 hover:text-stone-800 hover:bg-stone-50 disabled:opacity-30 disabled:hover:bg-transparent"
+                          title="Di chuyển lên trên"
+                        >
+                          <ArrowUp className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleMoveEvent(idx, 'down')}
+                          disabled={idx === formData.events.length - 1}
+                          className="p-1.5 rounded-lg border border-stone-200 text-stone-500 hover:text-stone-800 hover:bg-stone-50 disabled:opacity-30 disabled:hover:bg-transparent"
+                          title="Di chuyển xuống dưới"
+                        >
+                          <ArrowDown className="w-3.5 h-3.5" />
+                        </button>
+                        {formData.events.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteEvent(idx)}
+                            className="p-1.5 rounded-lg border border-rose-200 text-rose-500 hover:bg-rose-50 transition-colors ml-1"
+                            title="Xóa buổi lễ này"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
                     </div>
 
+                    {/* Basic Event Info: Title & Family Side */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="block text-[11px] font-semibold text-stone-700 mb-1">
-                          Tên sự kiện
+                          Tên buổi lễ / Sự kiện *
                         </label>
                         <input
                           type="text"
                           value={event.title}
-                          onChange={(e) => {
-                            const updated = [...formData.events];
-                            updated[idx].title = e.target.value;
-                            setFormData({ ...formData, events: updated });
-                          }}
+                          onChange={(e) =>
+                            handleUpdateEventField(idx, 'title', e.target.value)
+                          }
+                          placeholder="VD: Lễ Thành Hôn (Nhà Trai) hoặc Lễ Vu Quy (Nhà Gái)"
                           className="w-full px-3 py-2 rounded-xl bg-stone-50 border border-stone-300 focus:outline-none focus:bg-white text-xs"
                         />
+                        {/* Quick preset chips */}
+                        <div className="flex flex-wrap gap-1 mt-1.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleUpdateEventField(idx, 'title', 'Lễ Thành Hôn (Nhà Trai)');
+                              handleUpdateEventField(idx, 'side', 'groom');
+                            }}
+                            className="text-[10px] px-2 py-0.5 rounded-md bg-stone-100 hover:bg-stone-200 text-stone-600"
+                          >
+                            Lễ Thành Hôn
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleUpdateEventField(idx, 'title', 'Lễ Vu Quy (Nhà Gái)');
+                              handleUpdateEventField(idx, 'side', 'bride');
+                            }}
+                            className="text-[10px] px-2 py-0.5 rounded-md bg-stone-100 hover:bg-stone-200 text-stone-600"
+                          >
+                            Lễ Vu Quy
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleUpdateEventField(idx, 'title', 'Lễ Đính Hôn (Ăn Hỏi)');
+                            }}
+                            className="text-[10px] px-2 py-0.5 rounded-md bg-stone-100 hover:bg-stone-200 text-stone-600"
+                          >
+                            Lễ Đính Hôn
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleUpdateEventField(idx, 'title', 'Tiệc Cưới Chung (Nhà Hàng)');
+                              handleUpdateEventField(idx, 'side', 'both');
+                            }}
+                            className="text-[10px] px-2 py-0.5 rounded-md bg-stone-100 hover:bg-stone-200 text-stone-600"
+                          >
+                            Tiệc Cưới
+                          </button>
+                        </div>
                       </div>
 
                       <div>
                         <label className="block text-[11px] font-semibold text-stone-700 mb-1">
-                          Thời gian tổ chức
+                          Bên tổ chức gia đình
+                        </label>
+                        <div className="grid grid-cols-3 gap-1.5 pt-0.5">
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateEventField(idx, 'side', 'groom')}
+                            className={`px-2 py-2 rounded-xl text-xs font-semibold border transition-all text-center ${
+                              event.side === 'groom'
+                                ? 'bg-blue-50 border-blue-500 text-blue-700 shadow-xs'
+                                : 'bg-stone-50 border-stone-200 text-stone-600 hover:bg-stone-100'
+                            }`}
+                          >
+                            Nhà Trai
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateEventField(idx, 'side', 'bride')}
+                            className={`px-2 py-2 rounded-xl text-xs font-semibold border transition-all text-center ${
+                              event.side === 'bride'
+                                ? 'bg-rose-50 border-rose-500 text-rose-700 shadow-xs'
+                                : 'bg-stone-50 border-stone-200 text-stone-600 hover:bg-stone-100'
+                            }`}
+                          >
+                            Nhà Gái
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateEventField(idx, 'side', 'both')}
+                            className={`px-2 py-2 rounded-xl text-xs font-semibold border transition-all text-center ${
+                              event.side === 'both'
+                                ? 'bg-amber-50 border-amber-500 text-amber-800 shadow-xs'
+                                : 'bg-stone-50 border-stone-200 text-stone-600 hover:bg-stone-100'
+                            }`}
+                          >
+                            Cả Hai Bên
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Schedule Date & Time Row (Core User Request) */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-xl bg-[#faf7f3] border border-[#eee2d3]">
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="text-[11px] font-semibold text-stone-800 flex items-center gap-1">
+                            <Calendar className="w-3.5 h-3.5 text-[#9b683e]" />
+                            <span>Ngày tổ chức hôn lễ *</span>
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const targetVal =
+                                formData.weddingDateFormatted?.split(',')[1]?.trim() ||
+                                formData.weddingDateFormatted ||
+                                '28 / 11 / 2026';
+                              handleUpdateEventField(idx, 'dateText', targetVal);
+                            }}
+                            className="text-[10px] text-[#9b683e] hover:underline"
+                            title="Lấy theo ngày cưới chính đã nhập"
+                          >
+                            Lấy theo ngày cưới chính
+                          </button>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={event.dateText || ''}
+                            onChange={(e) =>
+                              handleUpdateEventField(idx, 'dateText', e.target.value)
+                            }
+                            placeholder="VD: 28 / 11 / 2026 hoặc 28 Tháng 11, 2026"
+                            className="flex-1 px-3 py-2 rounded-xl bg-white border border-stone-300 focus:outline-none text-xs font-medium"
+                          />
+                          {/* Native Date Picker Helper */}
+                          <div className="relative shrink-0" title="Chọn từ lịch">
+                            <input
+                              type="date"
+                              value={isoDateVal}
+                              onChange={(e) => {
+                                if (e.target.value) {
+                                  handleUpdateEventField(
+                                    idx,
+                                    'dateText',
+                                    formatDateToDisplay(e.target.value)
+                                  );
+                                }
+                              }}
+                              className="w-9 h-9 opacity-0 absolute inset-0 cursor-pointer z-10"
+                            />
+                            <div className="w-9 h-9 rounded-xl bg-white border border-stone-300 flex items-center justify-center text-stone-600 hover:bg-stone-50 cursor-pointer shadow-xs">
+                              <Calendar className="w-4 h-4 text-[#9b683e]" />
+                            </div>
+                          </div>
+                        </div>
+                        <p className="text-[10px] text-stone-400 mt-1">
+                          Dòng chữ ngày tổ chức hiển thị trực tiếp trên thẻ lịch trình của sự kiện.
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-semibold text-stone-800 mb-1 flex items-center gap-1">
+                          <Clock className="w-3.5 h-3.5 text-[#9b683e]" />
+                          <span>Giờ cử hành hôn lễ *</span>
                         </label>
                         <input
                           type="text"
-                          value={event.time}
-                          onChange={(e) => {
-                            const updated = [...formData.events];
-                            updated[idx].time = e.target.value;
-                            setFormData({ ...formData, events: updated });
-                          }}
-                          placeholder="VD: 09:00 AM"
-                          className="w-full px-3 py-2 rounded-xl bg-stone-50 border border-stone-300 focus:outline-none focus:bg-white text-xs"
+                          value={event.time || ''}
+                          onChange={(e) =>
+                            handleUpdateEventField(idx, 'time', e.target.value)
+                          }
+                          placeholder="VD: 09:00 AM hoặc 11:30 AM"
+                          className="w-full px-3 py-2 rounded-xl bg-white border border-stone-300 focus:outline-none text-xs font-medium"
                         />
+                        {/* Quick Time Selection Chips */}
+                        <div className="flex flex-wrap gap-1 mt-1.5">
+                          {['07:00 AM', '07:30 AM', '08:00 AM', '09:00 AM', '11:00 AM', '11:30 AM', '17:30 PM', '18:00 PM'].map(
+                            (timeVal) => (
+                              <button
+                                key={timeVal}
+                                type="button"
+                                onClick={() => handleUpdateEventField(idx, 'time', timeVal)}
+                                className={`text-[10px] px-2 py-0.5 rounded-md transition-colors ${
+                                  event.time === timeVal
+                                    ? 'bg-[#9e673a] text-white font-semibold'
+                                    : 'bg-white hover:bg-stone-100 text-stone-600 border border-stone-200'
+                                }`}
+                              >
+                                {timeVal}
+                              </button>
+                            )
+                          )}
+                        </div>
                       </div>
+                    </div>
 
+                    {/* Venue Name & Address */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="block text-[11px] font-semibold text-stone-700 mb-1">
                           Tên địa điểm / Hội trường / Tư gia
@@ -675,11 +1113,10 @@ export const EditWeddingModal: React.FC<EditWeddingModalProps> = ({
                         <input
                           type="text"
                           value={event.venueName}
-                          onChange={(e) => {
-                            const updated = [...formData.events];
-                            updated[idx].venueName = e.target.value;
-                            setFormData({ ...formData, events: updated });
-                          }}
+                          onChange={(e) =>
+                            handleUpdateEventField(idx, 'venueName', e.target.value)
+                          }
+                          placeholder="VD: Tư Gia Nhà Trai hoặc Khách Sạn Riverside"
                           className="w-full px-3 py-2 rounded-xl bg-stone-50 border border-stone-300 focus:outline-none focus:bg-white text-xs"
                         />
                       </div>
@@ -691,11 +1128,10 @@ export const EditWeddingModal: React.FC<EditWeddingModalProps> = ({
                         <input
                           type="text"
                           value={event.address}
-                          onChange={(e) => {
-                            const updated = [...formData.events];
-                            updated[idx].address = e.target.value;
-                            setFormData({ ...formData, events: updated });
-                          }}
+                          onChange={(e) =>
+                            handleUpdateEventField(idx, 'address', e.target.value)
+                          }
+                          placeholder="VD: Số 68 Đường Hoa Hồng, Phường Bến Nghé, Quận 1, TP. HCM"
                           className="w-full px-3 py-2 rounded-xl bg-stone-50 border border-stone-300 focus:outline-none focus:bg-white text-xs"
                         />
                       </div>
@@ -716,16 +1152,14 @@ export const EditWeddingModal: React.FC<EditWeddingModalProps> = ({
                           <input
                             type="text"
                             value={event.mapQuery || ''}
-                            onChange={(e) => {
-                              const updated = [...formData.events];
-                              updated[idx].mapQuery = e.target.value;
-                              setFormData({ ...formData, events: updated });
-                            }}
+                            onChange={(e) =>
+                              handleUpdateEventField(idx, 'mapQuery', e.target.value)
+                            }
                             placeholder="VD: 10.778786, 106.698345 hoặc Diamond Place 15A Hồ Văn Huê"
                             className="w-full px-3 py-1.5 rounded-lg bg-white border border-stone-300 text-xs focus:outline-none"
                           />
                           <p className="text-[10px] text-stone-400 mt-1">
-                            Mẹo: Có thể sao chép trực tiếp cặp số tọa độ từ Google Maps và dán vào đây.
+                            Mẹo: Có thể dán trực tiếp tọa độ từ Google Maps hoặc tên tòa nhà cụ thể.
                           </p>
                         </div>
 
@@ -793,6 +1227,18 @@ export const EditWeddingModal: React.FC<EditWeddingModalProps> = ({
                   </div>
                 );
               })}
+
+              {/* Add event button at bottom */}
+              <div className="text-center pt-2">
+                <button
+                  type="button"
+                  onClick={handleAddEvent}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl border-2 border-dashed border-[#d9c4b1] hover:border-[#9e673a] bg-[#fcfaf7] hover:bg-[#faf4ec] text-[#8e5a32] text-xs font-semibold transition-all"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Thêm Buổi Lễ Mới Vào Lịch Trình (Tiệc cưới, Lễ đính hôn...)</span>
+                </button>
+              </div>
             </div>
           )}
 

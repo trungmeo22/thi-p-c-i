@@ -134,6 +134,7 @@ export const INITIAL_WEDDING_DATA: WeddingData = {
     },
   },
   adminEmail: 'trungvp195@gmail.com',
+  adminPin: '2811',
   audioTrack: {
     id: 'track-1',
     title: 'Canon in D Major (Wedding Piano)',

@@ -13,15 +13,18 @@ import {
   LocateFixed,
   Eye,
   CheckCircle2,
+  Pencil,
 } from 'lucide-react';
 import { WeddingData, WeddingEvent } from '../types';
 
 interface EventDetailsMapSectionProps {
   weddingData: WeddingData;
+  onOpenEditModal?: () => void;
 }
 
 export const EventDetailsMapSection: React.FC<EventDetailsMapSectionProps> = ({
   weddingData,
+  onOpenEditModal,
 }) => {
   const [selectedEventId, setSelectedEventId] = useState<string>(
     weddingData.events[weddingData.events.length - 1]?.id || weddingData.events[0]?.id
@@ -110,6 +113,19 @@ export const EventDetailsMapSection: React.FC<EventDetailsMapSectionProps> = ({
           <p className="text-stone-500 text-sm font-light leading-relaxed">
             Sự hiện diện của quý vị là niềm vinh hạnh to lớn và lời chúc phúc ý nghĩa nhất đối với đôi lứa và hai bên gia đình.
           </p>
+          {onOpenEditModal && (
+            <div className="mt-4 flex justify-center">
+              <button
+                type="button"
+                onClick={onOpenEditModal}
+                className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-white hover:bg-[#faf4ed] text-[#8e5c33] border border-[#e2d0bf] text-xs font-semibold shadow-xs hover:shadow transition-all group"
+                title="Chỉnh sửa ngày giờ Lễ Thành Hôn, Lễ Vu Quy và vị trí bản đồ"
+              >
+                <Pencil className="w-3.5 h-3.5 text-[#a06a3e] group-hover:rotate-12 transition-transform" />
+                <span>Chỉnh sửa ngày giờ & lịch trình hôn lễ</span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Event Cards Grid */}
@@ -153,11 +169,26 @@ export const EventDetailsMapSection: React.FC<EventDetailsMapSectionProps> = ({
                         ? 'NHÀ GÁI'
                         : 'LỄ CƯỚI'}
                     </span>
-                    {isSelected && (
-                      <span className="flex items-center gap-1 text-[11px] font-semibold text-[#a06a3e]">
-                        <Navigation className="w-3 h-3" /> Đang xem bản đồ
-                      </span>
-                    )}
+                    <div className="flex items-center gap-1.5">
+                      {isSelected && (
+                        <span className="flex items-center gap-1 text-[11px] font-semibold text-[#a06a3e]">
+                          <Navigation className="w-3 h-3" /> Đang xem bản đồ
+                        </span>
+                      )}
+                      {onOpenEditModal && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onOpenEditModal();
+                          }}
+                          className="p-1 rounded-md text-stone-400 hover:text-[#915e34] hover:bg-stone-100 transition-colors ml-1"
+                          title="Chỉnh sửa ngày giờ & địa điểm buổi lễ này"
+                        >
+                          <Pencil className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   <h3 className="font-serif-display text-xl sm:text-2xl text-stone-800 font-medium mb-3">

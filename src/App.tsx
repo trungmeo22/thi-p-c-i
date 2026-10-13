@@ -18,6 +18,9 @@ import { FloatingPetals } from './components/FloatingPetals';
 import { Footer } from './components/Footer';
 import { GuestManagementModal } from './components/GuestManagementModal';
 import { EditWeddingModal } from './components/EditWeddingModal';
+import { AdminAuthModal } from './components/AdminAuthModal';
+import { ShareModal } from './components/ShareModal';
+import { Share2 } from 'lucide-react';
 import {
   subscribeToWeddingData,
   saveWeddingDataToFirestore,
@@ -106,8 +109,111 @@ export default function App() {
   // Guest wishes list
   const [wishes, setWishes] = useState<WeddingWish[]>(INITIAL_WISHES);
 
+  const [isHostMode, setIsHostMode] = useState<boolean>(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('admin') === 'true' || params.get('mode') === 'host') {
+        return true;
+      }
+      return (
+        localStorage.getItem('wedding_host_authenticated') === 'true' ||
+        sessionStorage.getItem('wedding_host_authenticated') === 'true'
+      );
+    } catch {
+      return false;
+    }
+  });
+
+  // Personalized Guest Name from URL parameter (?to=GuestName or ?guest=GuestName)
+  const [guestName, setGuestName] = useState<string>(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('to') || params.get('guest') || params.get('k') || '';
+    } catch {
+      return '';
+    }
+  });
+
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isGuestModalOpen, setIsGuestModalOpen] = useState(false);
+  const [saveToast, setSaveToast] = useState<string | null>(null);
+  const [pendingAction, setPendingAction] = useState<{
+    type: 'edit' | 'guest';
+    tab?: 'couple' | 'gallery' | 'banks' | 'datetime' | 'venues' | 'photos';
+  } | null>(null);
+
+  // Auto prompt for PIN if ?admin is in URL but user isn't authenticated yet
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const hasAdmin = params.get('admin') !== null || params.get('mode') === 'host';
+      const isAuth =
+        localStorage.getItem('wedding_host_authenticated') === 'true' ||
+        sessionStorage.getItem('wedding_host_authenticated') === 'true';
+      if (hasAdmin && !isAuth) {
+        setIsAuthModalOpen(true);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const [editModalTab, setEditModalTab] = useState<
+    'couple' | 'gallery' | 'banks' | 'datetime' | 'venues' | 'photos'
+  >('couple');
+
+  const handleOpenAuthModal = () => {
+    setIsAuthModalOpen(true);
+  };
+
+  const handleUnlockHostMode = () => {
+    setIsHostMode(true);
+    if (pendingAction) {
+      if (pendingAction.type === 'edit') {
+        setEditModalTab(pendingAction.tab || 'couple');
+        setIsEditModalOpen(true);
+      } else if (pendingAction.type === 'guest') {
+        setIsGuestModalOpen(true);
+      }
+      setPendingAction(null);
+    } else {
+      setSaveToast('Đã mở khóa Chế độ Chủ Tiệc! Bạn có thể chỉnh sửa thông tin thiệp và quản lý khách mời.');
+      setTimeout(() => setSaveToast(null), 3500);
+    }
+  };
+
+  const handleLockHostMode = () => {
+    setIsHostMode(false);
+    localStorage.removeItem('wedding_host_authenticated');
+    sessionStorage.removeItem('wedding_host_authenticated');
+    setIsEditModalOpen(false);
+    setIsGuestModalOpen(false);
+    setSaveToast('Đã khóa Chế độ Chủ Tiệc. Bạn đang xem giao diện như khách mời!');
+    setTimeout(() => setSaveToast(null), 3500);
+  };
+
+  const handleOpenEditModal = (
+    tab: 'couple' | 'gallery' | 'banks' | 'datetime' | 'venues' | 'photos' = 'couple'
+  ) => {
+    if (!isHostMode) {
+      setPendingAction({ type: 'edit', tab });
+      setIsAuthModalOpen(true);
+      return;
+    }
+    setEditModalTab(tab);
+    setIsEditModalOpen(true);
+  };
+
+  const handleOpenGuestModal = () => {
+    if (!isHostMode) {
+      setPendingAction({ type: 'guest' });
+      setIsAuthModalOpen(true);
+      return;
+    }
+    setIsGuestModalOpen(true);
+  };
 
   // Sync weddingData to localStorage
   useEffect(() => {
@@ -203,9 +309,16 @@ export default function App() {
   // Customizer Handlers
   const handleSaveWeddingData = (updated: WeddingData) => {
     setWeddingData(updated);
-    saveWeddingDataToFirestore(updated).catch((err) => {
-      console.error('Failed to save wedding data to Firestore:', err);
-    });
+    saveWeddingDataToFirestore(updated)
+      .then(() => {
+        setSaveToast('Đã lưu thành công lên Firebase Firestore! Toàn bộ khách mời sẽ thấy dữ liệu cập nhật mới.');
+        setTimeout(() => setSaveToast(null), 4000);
+      })
+      .catch((err) => {
+        console.error('Failed to save wedding data to Firestore:', err);
+        setSaveToast('Lưu nội bộ thành công. Đang đồng bộ lại với Firebase...');
+        setTimeout(() => setSaveToast(null), 3000);
+      });
   };
 
   const handleResetWeddingData = () => {
@@ -226,6 +339,13 @@ export default function App() {
       {/* Gentle Floating Blossom / Rose Petals */}
       <FloatingPetals />
 
+      {/* Save / Status Toast Notification */}
+      {saveToast && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-[#31251e] text-[#fbf6ef] px-4 py-2.5 rounded-2xl shadow-2xl border border-[#9b663b]/50 text-xs flex items-center gap-2 max-w-md text-center animate-in fade-in slide-in-from-top-3 duration-200">
+          <span>{saveToast}</span>
+        </div>
+      )}
+
       {/* Floating Romantic Background Music Player */}
       <AudioPlayer
         currentTrack={weddingData.audioTrack}
@@ -236,14 +356,19 @@ export default function App() {
       <Navbar
         weddingData={weddingData}
         guestCount={guests.filter((g) => g.attendance === 'attending').length}
-        onOpenEditModal={() => setIsEditModalOpen(true)}
-        onOpenGuestModal={() => setIsGuestModalOpen(true)}
+        isHostMode={isHostMode}
+        onOpenEditModal={() => handleOpenEditModal('couple')}
+        onOpenGuestModal={handleOpenGuestModal}
+        onOpenAuthModal={handleOpenAuthModal}
+        onLockHostMode={handleLockHostMode}
+        onOpenShareModal={() => setIsShareModalOpen(true)}
       />
 
-      {/* Hero Section */}
+      {/* Hero Section with optional personalized guest greeting */}
       <HeroSection
         weddingData={weddingData}
-        onOpenEditModal={() => setIsEditModalOpen(true)}
+        onOpenEditModal={isHostMode ? () => handleOpenEditModal('couple') : undefined}
+        guestName={guestName}
       />
 
       {/* Real-time Countdown Timer Section */}
@@ -252,16 +377,19 @@ export default function App() {
       {/* Couple Story & Timeline */}
       <CoupleStorySection
         weddingData={weddingData}
-        onOpenEditModal={() => setIsEditModalOpen(true)}
+        onOpenEditModal={isHostMode ? () => handleOpenEditModal('couple') : undefined}
       />
 
       {/* Wedding Events Itinerary & Interactive Directions Map */}
-      <EventDetailsMapSection weddingData={weddingData} />
+      <EventDetailsMapSection
+        weddingData={weddingData}
+        onOpenEditModal={isHostMode ? () => handleOpenEditModal('venues') : undefined}
+      />
 
       {/* Elegant Sliding Wedding Photo Gallery */}
       <GallerySlider
         items={weddingData.gallery}
-        onOpenEditModal={() => setIsEditModalOpen(true)}
+        onOpenEditModal={isHostMode ? () => handleOpenEditModal('gallery') : undefined}
       />
 
       {/* Secure Bank QR Code Gift Box (Nhà Trai & Nhà Gái) */}
@@ -276,10 +404,67 @@ export default function App() {
       />
 
       {/* RSVP Attendance Confirmation Form */}
-      <RsvpSection onAddGuest={handleAddGuest} />
+      <RsvpSection onAddGuest={handleAddGuest} guestName={guestName} />
 
       {/* Footer */}
-      <Footer weddingData={weddingData} />
+      <Footer
+        weddingData={weddingData}
+        onOpenAuthModal={handleOpenAuthModal}
+        onOpenShareModal={() => setIsShareModalOpen(true)}
+      />
+
+      {/* Floating Host Controls Bar (When unlocked) */}
+      {isHostMode && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 bg-[#251b14]/90 text-amber-200 backdrop-blur-md px-4 py-2 rounded-full shadow-2xl border border-amber-500/40 flex items-center gap-2 text-xs animate-in slide-in-from-bottom-2 duration-300">
+          <span className="flex items-center gap-1.5 font-medium pr-1">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span>Chủ Tiệc</span>
+          </span>
+          <button
+            onClick={() => handleOpenEditModal('couple')}
+            className="px-2.5 py-1 rounded-full bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 font-semibold transition-colors"
+          >
+            Tùy Biến Thiệp
+          </button>
+          <button
+            onClick={handleOpenGuestModal}
+            className="px-2.5 py-1 rounded-full bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 font-semibold transition-colors"
+          >
+            DS Khách ({guests.filter((g) => g.attendance === 'attending').length})
+          </button>
+          <button
+            onClick={() => setIsShareModalOpen(true)}
+            className="px-2.5 py-1 rounded-full bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-200 font-semibold transition-colors flex items-center gap-1"
+            title="Lấy link thiệp sạch để gửi cho khách"
+          >
+            <Share2 className="w-3.5 h-3.5" />
+            <span>Chia Sẻ Thiệp</span>
+          </button>
+          <button
+            onClick={handleLockHostMode}
+            className="px-2.5 py-1 rounded-full bg-stone-700 hover:bg-stone-600 text-stone-200 transition-colors ml-1"
+            title="Khóa quản trị để xem giao diện như khách mời"
+          >
+            Xem như khách
+          </button>
+        </div>
+      )}
+
+      {/* Share Invitation & Vercel Links Modal */}
+      <ShareModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        weddingData={weddingData}
+        onPreviewAsGuest={handleLockHostMode}
+      />
+
+      {/* Host / Admin PIN Verification Modal */}
+      <AdminAuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onSuccess={handleUnlockHostMode}
+        currentPin={weddingData.adminPin || '2811'}
+      />
 
       {/* Couple / Admin Guest Management Modal */}
       <GuestManagementModal
@@ -298,6 +483,7 @@ export default function App() {
         data={weddingData}
         onSave={handleSaveWeddingData}
         onReset={handleResetWeddingData}
+        initialTab={editModalTab}
       />
     </div>
   );
