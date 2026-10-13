@@ -106,7 +106,7 @@ export const EditWeddingModal: React.FC<EditWeddingModalProps> = ({
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      promises.push(compressImageFile(file, 1000, 0.72));
+      promises.push(compressImageFile(file, 850, 0.68));
     }
 
     try {
@@ -2188,7 +2188,7 @@ export const EditWeddingModal: React.FC<EditWeddingModalProps> = ({
                           handleFileUpload(
                             e,
                             (url) => setFormData({ ...formData, coverImage: url }),
-                            1200
+                            900
                           )
                         }
                       />
@@ -2229,7 +2229,7 @@ export const EditWeddingModal: React.FC<EditWeddingModalProps> = ({
                         onChange={(e) =>
                           handleFileUpload(e, (url) =>
                             setFormData({ ...formData, secondaryCoverImage: url }),
-                            1200
+                            900
                           )
                         }
                       />

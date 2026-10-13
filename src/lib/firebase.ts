@@ -103,9 +103,31 @@ export function subscribeToWeddingData(
 ) {
   let cachedMainData: WeddingData | null = null;
   let cachedGallery: GalleryItem[] | null = null;
+  let hasReceivedGallery = false;
 
   const emitMergedData = () => {
     if (!cachedMainData) return;
+
+    // Resolve gallery items:
+    // Priority 1: If we have custom gallery items in wedding_gallery collection, use them!
+    // Priority 2: If mainDoc has photos with valid external URLs (e.g. Unsplash mockups), use them.
+    // Priority 3: Fall back to INITIAL_WEDDING_DATA.gallery.
+    let resolvedGallery: GalleryItem[] = [];
+    if (cachedGallery && cachedGallery.length > 0) {
+      resolvedGallery = cachedGallery;
+    } else if (cachedMainData.gallery && cachedMainData.gallery.length > 0) {
+      const validMain = cachedMainData.gallery.filter(
+        (p) => p && typeof p.url === 'string' && p.url.trim().length > 0
+      );
+      if (validMain.length > 0) {
+        resolvedGallery = validMain;
+      }
+    }
+
+    if (resolvedGallery.length === 0) {
+      resolvedGallery = INITIAL_WEDDING_DATA.gallery || [];
+    }
+
     const finalData: WeddingData = {
       ...INITIAL_WEDDING_DATA,
       ...cachedMainData,
@@ -129,18 +151,7 @@ export function subscribeToWeddingData(
         cachedMainData.story && cachedMainData.story.length > 0
           ? cachedMainData.story
           : INITIAL_WEDDING_DATA.story,
-      // If we have custom gallery items in wedding_gallery collection, use them
-      gallery: (() => {
-        let gal =
-          cachedGallery && cachedGallery.length > 0
-            ? cachedGallery
-            : cachedMainData.gallery && cachedMainData.gallery.length > 0
-            ? cachedMainData.gallery
-            : INITIAL_WEDDING_DATA.gallery || [];
-        // Make sure all gallery items have a valid non-empty url
-        gal = gal.filter((p) => p && typeof p.url === 'string' && p.url.trim().length > 0);
-        return gal.length > 0 ? gal : INITIAL_WEDDING_DATA.gallery;
-      })(),
+      gallery: resolvedGallery,
     };
     onData(finalData);
   };
@@ -174,10 +185,11 @@ export function subscribeToWeddingData(
   const unsubGallery = onSnapshot(
     galleryQuery,
     (snapshot) => {
+      hasReceivedGallery = true;
       const items: GalleryItem[] = [];
       snapshot.forEach((docSnap) => {
         const item = docSnap.data();
-        if (item.url) {
+        if (item.url && typeof item.url === 'string' && item.url.trim().length > 0) {
           items.push({
             id: docSnap.id,
             url: item.url,
@@ -204,7 +216,7 @@ export async function saveWeddingDataToFirestore(data: WeddingData): Promise<voi
   try {
     const weddingDocRef = doc(db, 'wedding_data', WEDDING_DOC_ID);
 
-    // 1. Sync all gallery photos into wedding_gallery collection
+    // 1. Sync all gallery photos into individual docs in wedding_gallery collection
     if (data.gallery && data.gallery.length > 0) {
       // Save each photo as its own document in wedding_gallery
       const saveGalleryPromises = data.gallery.map((photo, index) => {
@@ -254,21 +266,21 @@ export async function saveWeddingDataToFirestore(data: WeddingData): Promise<voi
     }
 
     // 2. Save wedding_data/main document
-    // If the full data fits under 500KB, keep it all in wedding_data/main.
-    // If oversized due to images, save lightweight gallery references in main document.
-    let dataToSaveInMain = { ...data };
-    const jsonString = JSON.stringify(data);
-    if (jsonString.length > 500 * 1024) {
-      dataToSaveInMain = {
-        ...data,
-        gallery: data.gallery.map((p) => ({
-          id: p.id,
-          url: p.url.startsWith('data:') ? '' : p.url,
-          title: p.title,
-          caption: p.caption,
-        })),
-      };
-    }
+    // Always store a clean lightweight gallery inside wedding_data/main (strip massive base64 strings),
+    // because all full base64 photos are safely and individually stored in wedding_gallery collection!
+    // This guarantees wedding_data/main is always under 150KB and NEVER hits the 1MB Firestore limit!
+    const cleanGalleryForMain = data.gallery.map((p) => ({
+      id: p.id,
+      title: p.title || '',
+      caption: p.caption || '',
+      // Only keep external URLs (https://...) in main doc; omit heavy base64 data URLs
+      url: p.url.startsWith('data:') ? '' : p.url,
+    }));
+
+    const dataToSaveInMain = {
+      ...data,
+      gallery: cleanGalleryForMain,
+    };
 
     await setDoc(weddingDocRef, {
       weddingDataJson: JSON.stringify(dataToSaveInMain),

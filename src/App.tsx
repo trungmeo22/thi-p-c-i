@@ -276,23 +276,21 @@ export default function App() {
     setIsGuestModalOpen(true);
   };
 
-  // Sync weddingData to localStorage with quota-safe fallback
+  // Sync weddingData to localStorage with quota-safe optimization
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEYS.DATA, JSON.stringify(weddingData));
+      // In localStorage, store lightweight gallery without duplicating massive base64 strings
+      // because Firestore wedding_gallery collection handles full gallery persistence.
+      const safeToStore = {
+        ...weddingData,
+        gallery: weddingData.gallery.map((g) => ({
+          ...g,
+          url: g.url.startsWith('data:') ? '' : g.url,
+        })),
+      };
+      localStorage.setItem(STORAGE_KEYS.DATA, JSON.stringify(safeToStore));
     } catch {
-      try {
-        const lightweight = {
-          ...weddingData,
-          gallery: weddingData.gallery.map((g) => ({
-            ...g,
-            url: g.url.startsWith('data:') ? '' : g.url,
-          })),
-        };
-        localStorage.setItem(STORAGE_KEYS.DATA, JSON.stringify(lightweight));
-      } catch {
-        // quota full or private browsing
-      }
+      // quota full or private browsing
     }
   }, [weddingData]);
 
