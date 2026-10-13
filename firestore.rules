@@ -1,0 +1,75 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'trungvp195@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    match /wishes/{wishId} {
+      function isValidWish(data) {
+        return data.keys().hasAll(['senderName', 'message', 'createdAt']) &&
+               data.senderName is string && data.senderName.size() > 0 && data.senderName.size() <= 100 &&
+               data.message is string && data.message.size() > 0 && data.message.size() <= 1000 &&
+               data.createdAt is string && data.createdAt.size() <= 100 &&
+               (!('relationship' in data) || (data.relationship is string && data.relationship.size() <= 50)) &&
+               (!('likes' in data) || data.likes is number);
+      }
+
+      allow read: if true;
+      allow create: if isValidId(wishId) && isValidWish(request.resource.data);
+      allow update: if isValidId(wishId) && (
+        isAdmin() ||
+        (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes']) &&
+          request.resource.data.likes is number &&
+          request.resource.data.likes >= resource.data.likes &&
+          request.resource.data.likes <= resource.data.likes + 1
+        )
+      );
+      allow delete: if isAdmin();
+    }
+
+    match /rsvps/{rsvpId} {
+      function isValidRsvp(data) {
+        return data.keys().hasAll(['name', 'attendance', 'createdAt']) &&
+               data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+               data.attendance in ['attending', 'not_attending', 'tentative'] &&
+               data.createdAt is string && data.createdAt.size() <= 100 &&
+               (!('phone' in data) || (data.phone is string && data.phone.size() <= 30)) &&
+               (!('guestSide' in data) || (data.guestSide in ['groom', 'bride', 'both'])) &&
+               (!('guestCount' in data) || (data.guestCount is number && data.guestCount >= 1 && data.guestCount <= 20)) &&
+               (!('needTransportation' in data) || (data.needTransportation is bool)) &&
+               (!('notes' in data) || (data.notes is string && data.notes.size() <= 500));
+      }
+
+      allow read: if true;
+      allow create: if isValidId(rsvpId) && isValidRsvp(request.resource.data);
+      allow update, delete: if isAdmin();
+    }
+
+    match /wedding_data/{docId} {
+      function isValidWeddingContent(data) {
+        return data.keys().hasAll(['weddingDataJson', 'updatedAt']) &&
+               data.weddingDataJson is string && data.weddingDataJson.size() <= 500000 &&
+               data.updatedAt is string && data.updatedAt.size() <= 100;
+      }
+
+      allow read: if true;
+      allow create, update: if isValidId(docId) && isValidWeddingContent(request.resource.data);
+      allow delete: if isAdmin();
+    }
+  }
+}

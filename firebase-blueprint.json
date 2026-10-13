@@ -1,0 +1,115 @@
+{
+  "entities": {
+    "Wish": {
+      "title": "Wish",
+      "description": "Wedding congratulation wish from guests",
+      "type": "object",
+      "properties": {
+        "senderName": {
+          "type": "string",
+          "description": "Name of the guest sending the wish",
+          "maxLength": 100
+        },
+        "relationship": {
+          "type": "string",
+          "description": "Relationship with the couple",
+          "maxLength": 50
+        },
+        "message": {
+          "type": "string",
+          "description": "Congratulation message content",
+          "maxLength": 1000
+        },
+        "likes": {
+          "type": "number",
+          "description": "Number of likes for this wish"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when wish was posted"
+        }
+      },
+      "required": ["senderName", "message", "createdAt"]
+    },
+    "Rsvp": {
+      "title": "Rsvp",
+      "description": "Wedding guest attendance confirmation",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the guest",
+          "maxLength": 100
+        },
+        "phone": {
+          "type": "string",
+          "description": "Phone number of the guest",
+          "maxLength": 20
+        },
+        "guestSide": {
+          "type": "string",
+          "description": "Side of the wedding guest",
+          "enum": ["groom", "bride", "both"]
+        },
+        "attendance": {
+          "type": "string",
+          "description": "Attendance status",
+          "enum": ["attending", "not_attending", "tentative"]
+        },
+        "guestCount": {
+          "type": "number",
+          "description": "Number of people attending"
+        },
+        "needTransportation": {
+          "type": "boolean",
+          "description": "Whether guest needs shuttle transport"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Special notes or dietary restrictions",
+          "maxLength": 500
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when RSVP was submitted"
+        }
+      },
+      "required": ["name", "attendance", "createdAt"]
+    },
+    "WeddingContent": {
+      "title": "WeddingContent",
+      "description": "Wedding invitation configuration and customizable details",
+      "type": "object",
+      "properties": {
+        "weddingDataJson": {
+          "type": "string",
+          "description": "Serialized wedding configuration object",
+          "maxLength": 100000
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp of last modification"
+        },
+        "updatedBy": {
+          "type": "string",
+          "description": "User email or identifier who updated the content"
+        }
+      },
+      "required": ["weddingDataJson", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/wishes/{wishId}": {
+      "schema": "Wish",
+      "description": "Collection of wedding congratulation wishes"
+    },
+    "/rsvps/{rsvpId}": {
+      "schema": "Rsvp",
+      "description": "Collection of guest RSVP responses"
+    },
+    "/wedding_data/{docId}": {
+      "schema": "WeddingContent",
+      "description": "Wedding details and customization document"
+    }
+  }
+}
