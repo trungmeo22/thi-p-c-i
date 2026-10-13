@@ -9,6 +9,7 @@ import {
   SlidersHorizontal,
   Sparkles,
   Camera,
+  ImageOff,
 } from 'lucide-react';
 import { GalleryItem } from '../types';
 
@@ -18,27 +19,39 @@ interface GallerySliderProps {
 }
 
 export const GallerySlider: React.FC<GallerySliderProps> = ({ items, onOpenEditModal }) => {
+  // Filter out any items with completely missing url
+  const safeItems = (items || []).filter((item) => item && typeof item.url === 'string' && item.url.trim().length > 0);
+
   const [currentIndex, setCurrentIndex] = useState(0);
   const [viewMode, setViewMode] = useState<'slider' | 'grid'>('slider');
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
+  // Keep currentIndex in bounds if items change
+  useEffect(() => {
+    if (safeItems.length > 0 && currentIndex >= safeItems.length) {
+      setCurrentIndex(0);
+    }
+  }, [safeItems.length, currentIndex]);
+
   const nextSlide = useCallback(() => {
-    setCurrentIndex((prev) => (prev + 1) % items.length);
-  }, [items.length]);
+    if (safeItems.length === 0) return;
+    setCurrentIndex((prev) => (prev + 1) % safeItems.length);
+  }, [safeItems.length]);
 
   const prevSlide = useCallback(() => {
-    setCurrentIndex((prev) => (prev - 1 + items.length) % items.length);
-  }, [items.length]);
+    if (safeItems.length === 0) return;
+    setCurrentIndex((prev) => (prev - 1 + safeItems.length) % safeItems.length);
+  }, [safeItems.length]);
 
   // Keyboard navigation for lightbox
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (lightboxIndex !== null) {
+      if (lightboxIndex !== null && safeItems.length > 0) {
         if (e.key === 'ArrowRight') {
-          setLightboxIndex((prev) => (prev !== null ? (prev + 1) % items.length : 0));
+          setLightboxIndex((prev) => (prev !== null ? (prev + 1) % safeItems.length : 0));
         } else if (e.key === 'ArrowLeft') {
           setLightboxIndex((prev) =>
-            prev !== null ? (prev - 1 + items.length) % items.length : 0
+            prev !== null ? (prev - 1 + safeItems.length) % safeItems.length : 0
           );
         } else if (e.key === 'Escape') {
           setLightboxIndex(null);
@@ -47,9 +60,10 @@ export const GallerySlider: React.FC<GallerySliderProps> = ({ items, onOpenEditM
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [lightboxIndex, items.length]);
+  }, [lightboxIndex, safeItems.length]);
 
-  const currentItem = items[currentIndex] || items[0];
+  const activeIndex = safeItems.length > 0 ? Math.min(currentIndex, safeItems.length - 1) : 0;
+  const currentItem = safeItems[activeIndex];
 
   return (
     <section id="gallery" className="py-24 bg-[#faf7f2] relative overflow-hidden">
@@ -108,8 +122,8 @@ export const GallerySlider: React.FC<GallerySliderProps> = ({ items, onOpenEditM
           </div>
         </div>
 
-        {/* If items is empty */}
-        {items.length === 0 ? (
+        {/* If safeItems is empty */}
+        {safeItems.length === 0 ? (
           <div className="max-w-md mx-auto p-8 rounded-3xl bg-white border border-[#eee2d3] text-center shadow-sm space-y-4">
             <div className="w-14 h-14 mx-auto rounded-full bg-[#faf4ec] text-[#9c6a40] flex items-center justify-center">
               <Camera className="w-7 h-7" />
@@ -118,30 +132,36 @@ export const GallerySlider: React.FC<GallerySliderProps> = ({ items, onOpenEditM
             <p className="text-xs text-stone-500 font-light">
               Hãy tải lên những bức ảnh cưới đẹp nhất của bạn để chia sẻ khoảnh khắc tuyệt vời này tới khách mời.
             </p>
-            <button
-              onClick={onOpenEditModal}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#a06a3e] hover:bg-[#8b5a33] text-white text-xs font-semibold shadow-md transition-all"
-            >
-              <Camera className="w-4 h-4" />
-              <span>Tải Ảnh Lên Album Cưới</span>
-            </button>
+            {onOpenEditModal && (
+              <button
+                onClick={onOpenEditModal}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#a06a3e] hover:bg-[#8b5a33] text-white text-xs font-semibold shadow-md transition-all"
+              >
+                <Camera className="w-4 h-4" />
+                <span>Tải Ảnh Lên Album Cưới</span>
+              </button>
+            )}
           </div>
-        ) : viewMode === 'slider' ? (
+        ) : viewMode === 'slider' && currentItem ? (
           <div className="relative max-w-4xl mx-auto">
             {/* Main Active Slide Display */}
             <div className="relative h-[380px] sm:h-[520px] md:h-[600px] rounded-3xl overflow-hidden shadow-2xl border-4 border-white bg-stone-900 group">
               <AnimatePresence mode="wait">
                 <motion.img
-                  key={currentItem.id}
+                  key={currentItem.id || activeIndex}
                   src={currentItem.url}
-                  alt={currentItem.title}
+                  alt={currentItem.title || 'Ảnh cưới'}
                   referrerPolicy="no-referrer"
-                  initial={{ opacity: 0, scale: 1.05 }}
+                  initial={{ opacity: 0, scale: 1.02 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.96 }}
-                  transition={{ duration: 0.5 }}
+                  exit={{ opacity: 0, scale: 0.98 }}
+                  transition={{ duration: 0.4 }}
                   className="w-full h-full object-cover select-none cursor-pointer"
-                  onClick={() => setLightboxIndex(currentIndex)}
+                  onClick={() => setLightboxIndex(activeIndex)}
+                  onError={(e) => {
+                    // Fallback to high-res wedding placeholder if external URL fails
+                    (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=1200&q=85';
+                  }}
                 />
               </AnimatePresence>
 
@@ -149,10 +169,10 @@ export const GallerySlider: React.FC<GallerySliderProps> = ({ items, onOpenEditM
               <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-6 sm:p-8 text-white flex items-end justify-between pointer-events-none">
                 <div className="max-w-lg">
                   <span className="text-[11px] uppercase tracking-widest text-[#dfb58e] font-semibold">
-                    {currentIndex + 1} / {items.length}
+                    {activeIndex + 1} / {safeItems.length}
                   </span>
                   <h3 className="font-serif-display text-xl sm:text-2xl font-medium mt-0.5">
-                    {currentItem.title}
+                    {currentItem.title || 'Khoảnh khắc hạnh phúc'}
                   </h3>
                   {currentItem.caption && (
                     <p className="text-xs sm:text-sm text-stone-300 font-light mt-1">
@@ -162,7 +182,7 @@ export const GallerySlider: React.FC<GallerySliderProps> = ({ items, onOpenEditM
                 </div>
 
                 <button
-                  onClick={() => setLightboxIndex(currentIndex)}
+                  onClick={() => setLightboxIndex(activeIndex)}
                   className="pointer-events-auto p-2.5 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-md text-white border border-white/30 transition-transform hover:scale-110"
                   title="Xem phóng to toàn màn hình"
                 >
@@ -189,21 +209,24 @@ export const GallerySlider: React.FC<GallerySliderProps> = ({ items, onOpenEditM
 
             {/* Thumbnail Strip */}
             <div className="mt-4 flex items-center justify-center gap-2 overflow-x-auto py-2 px-1">
-              {items.map((item, idx) => (
+              {safeItems.map((item, idx) => (
                 <button
-                  key={item.id}
+                  key={item.id || idx}
                   onClick={() => setCurrentIndex(idx)}
                   className={`relative shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden transition-all duration-300 ${
-                    idx === currentIndex
+                    idx === activeIndex
                       ? 'ring-3 ring-[#a06a3e] scale-105 shadow-md'
                       : 'opacity-55 hover:opacity-100'
                   }`}
                 >
                   <img
                     src={item.url}
-                    alt={item.title}
+                    alt={item.title || `Thumbnail ${idx + 1}`}
                     referrerPolicy="no-referrer"
                     className="w-full h-full object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=400&q=70';
+                    }}
                   />
                 </button>
               ))}
@@ -212,21 +235,23 @@ export const GallerySlider: React.FC<GallerySliderProps> = ({ items, onOpenEditM
         ) : (
           /* View Mode: MASONRY / GRID */
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-            {items.map((item, idx) => (
+            {safeItems.map((item, idx) => (
               <motion.div
-                key={item.id}
+                key={item.id || idx}
                 initial={{ opacity: 0, scale: 0.95 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.4, delay: idx * 0.08 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.35, delay: Math.min(idx * 0.05, 0.4) }}
                 onClick={() => setLightboxIndex(idx)}
                 className="group relative h-72 rounded-2xl overflow-hidden shadow-md cursor-pointer bg-stone-100"
               >
                 <img
                   src={item.url}
-                  alt={item.title}
+                  alt={item.title || 'Ảnh cưới'}
                   referrerPolicy="no-referrer"
                   className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-500"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=800&q=80';
+                  }}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-4 flex flex-col justify-end text-white">
                   <h4 className="font-serif-display text-base font-semibold">{item.title}</h4>
@@ -240,7 +265,7 @@ export const GallerySlider: React.FC<GallerySliderProps> = ({ items, onOpenEditM
 
       {/* Fullscreen Lightbox Modal */}
       <AnimatePresence>
-        {lightboxIndex !== null && (
+        {lightboxIndex !== null && safeItems[lightboxIndex] && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -258,7 +283,7 @@ export const GallerySlider: React.FC<GallerySliderProps> = ({ items, onOpenEditM
             {/* Prev Image */}
             <button
               onClick={() =>
-                setLightboxIndex((prev) => (prev !== null ? (prev - 1 + items.length) % items.length : 0))
+                setLightboxIndex((prev) => (prev !== null ? (prev - 1 + safeItems.length) % safeItems.length : 0))
               }
               className="absolute left-4 sm:left-8 top-1/2 -translate-y-1/2 p-3 rounded-full bg-white/10 hover:bg-white/25 text-white transition-colors"
             >
@@ -268,7 +293,7 @@ export const GallerySlider: React.FC<GallerySliderProps> = ({ items, onOpenEditM
             {/* Next Image */}
             <button
               onClick={() =>
-                setLightboxIndex((prev) => (prev !== null ? (prev + 1) % items.length : 0))
+                setLightboxIndex((prev) => (prev !== null ? (prev + 1) % safeItems.length : 0))
               }
               className="absolute right-4 sm:right-8 top-1/2 -translate-y-1/2 p-3 rounded-full bg-white/10 hover:bg-white/25 text-white transition-colors"
             >
@@ -278,22 +303,22 @@ export const GallerySlider: React.FC<GallerySliderProps> = ({ items, onOpenEditM
             {/* Main Lightbox Content */}
             <div className="max-w-5xl max-h-[85vh] flex flex-col items-center">
               <img
-                src={items[lightboxIndex]?.url}
-                alt={items[lightboxIndex]?.title}
+                src={safeItems[lightboxIndex]?.url}
+                alt={safeItems[lightboxIndex]?.title}
                 referrerPolicy="no-referrer"
                 className="max-w-full max-h-[75vh] object-contain rounded-xl shadow-2xl"
               />
               <div className="mt-4 text-center text-white">
                 <h4 className="font-serif-display text-lg font-medium">
-                  {items[lightboxIndex]?.title}
+                  {safeItems[lightboxIndex]?.title}
                 </h4>
-                {items[lightboxIndex]?.caption && (
+                {safeItems[lightboxIndex]?.caption && (
                   <p className="text-xs text-stone-300 font-light mt-1">
-                    {items[lightboxIndex]?.caption}
+                    {safeItems[lightboxIndex]?.caption}
                   </p>
                 )}
                 <span className="text-[11px] text-[#e0b790] block mt-1">
-                  {lightboxIndex + 1} / {items.length}
+                  {lightboxIndex + 1} / {safeItems.length}
                 </span>
               </div>
             </div>
