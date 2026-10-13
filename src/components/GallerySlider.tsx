@@ -150,7 +150,6 @@ export const GallerySlider: React.FC<GallerySliderProps> = ({ items, onOpenEditM
                 key={`slide-${currentItem.id || activeIndex}`}
                 src={currentItem.url}
                 alt={currentItem.title || 'Ảnh cưới'}
-                crossOrigin="anonymous"
                 className="w-full h-full object-cover select-none cursor-pointer transition-opacity duration-300"
                 onClick={() => setLightboxIndex(activeIndex)}
                 onError={(e) => {

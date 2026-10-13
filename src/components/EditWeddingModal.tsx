@@ -111,14 +111,11 @@ export const EditWeddingModal: React.FC<EditWeddingModalProps> = ({
 
     try {
       const urls = await Promise.all(promises);
-      const newItems: GalleryItem[] = urls
-        .filter((u) => Boolean(u))
-        .map((url, i) => ({
-          id: `album_${Date.now()}_${i}`,
-          url,
-          title: `Khoảnh khắc đẹp ${i + 1}`,
-          caption: 'Hạnh phúc ngày chung đôi',
-        }));
+      const validUrls = urls.filter((u) => typeof u === 'string' && u.trim().length > 0);
+      if (validUrls.length === 0) {
+        alert('Không thể đọc dữ liệu tệp ảnh đã chọn. Vui lòng thử lại với tệp JPG hoặc PNG khác.');
+        return;
+      }
 
       setFormData((prev) => {
         // If current gallery only contains sample mockups, replace them completely with the newly uploaded photos!
@@ -128,6 +125,13 @@ export const EditWeddingModal: React.FC<EditWeddingModalProps> = ({
             (p) => p.id.startsWith('g-') || p.url.includes('images.unsplash.com')
           );
         const baseGallery = isAllMockups ? [] : prev.gallery;
+        const newItems: GalleryItem[] = validUrls.map((url, i) => ({
+          id: `album_${Date.now()}_${i}_${Math.random().toString(36).substring(2, 7)}`,
+          url,
+          title: `Khoảnh khắc đẹp ${baseGallery.length + i + 1}`,
+          caption: 'Hạnh phúc ngày chung đôi',
+        }));
+
         return {
           ...prev,
           gallery: [...baseGallery, ...newItems],
